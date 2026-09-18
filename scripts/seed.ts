@@ -5,6 +5,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { readFileSync, existsSync } from "node:fs";
+import path from "node:path";
 import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
@@ -26,8 +27,13 @@ const manifest = loadManifest();
 
 function img(key: string, index: number): string | null {
   const arr = manifest[key];
-  if (!arr || arr.length < index) return null;
-  return arr[index - 1] ?? null;
+  if (arr?.[index - 1]) return arr[index - 1];
+
+  const base = path.join(process.cwd(), "uploads", "seed", `${key}-${index}`);
+  for (const ext of [".jpg", ".jpeg", ".png", ".webp"]) {
+    if (existsSync(`${base}${ext}`)) return `/api/files/seed/${key}-${index}${ext}`;
+  }
+  return null;
 }
 
 function images(key: string, count: number): string[] {
@@ -199,7 +205,8 @@ const VEHICLES: SeedVehicle[] = [
 async function seedAdmin() {
   const email = (process.env.SEED_ADMIN_EMAIL || "admin@cspekmotors.com").toLowerCase();
   const name = process.env.SEED_ADMIN_NAME || "System Administrator";
-  const password = process.env.SEED_ADMIN_PASSWORD || "Cspek@2026";
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!password) throw new Error("SEED_ADMIN_PASSWORD is required when creating the admin user.");
 
   const existing = await db.adminUser.findUnique({ where: { email } });
   if (existing) {
@@ -288,9 +295,12 @@ async function seedVehicles() {
     }
 
     const exists = await db.vehicle.findUnique({ where: { slug } });
-    if (exists) { skipped++; continue; }
+    if (exists && (await db.media.count({ where: { vehicleId: exists.id } })) > 0) {
+      skipped++;
+      continue;
+    }
 
-    const vehicle = await db.vehicle.create({
+    const vehicle = exists ?? await db.vehicle.create({
       data: {
         title: v.title,
         slug,

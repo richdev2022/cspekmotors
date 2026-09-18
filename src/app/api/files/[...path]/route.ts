@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync, statSync, createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import path from "node:path";
 
 export const runtime = "nodejs";
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
       const end = match[2] ? parseInt(match[2], 10) : stat.size - 1;
       const chunkSize = end - start + 1;
       const stream = createReadStream(full, { start, end });
-      return new NextResponse(stream as unknown as ReadableStream, {
+      return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
         status: 206,
         headers: {
           "Content-Type": mime,
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   }
 
   const stream = createReadStream(full);
-  return new NextResponse(stream as unknown as ReadableStream, {
+  return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
     headers: {
       "Content-Type": mime,
       "Content-Length": String(stat.size),

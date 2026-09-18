@@ -76,7 +76,6 @@ function CategoryGallery({ name, media }: { name: string; media: { id: string; u
               className="group relative block aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-100"
               title={m.caption || `${name} photo`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={m.url}
                 alt={m.caption || `${name} photo`}

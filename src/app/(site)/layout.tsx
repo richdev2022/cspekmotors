@@ -4,6 +4,8 @@ import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { FloatingWhatsApp } from "@/components/site/floating-whatsapp";
 
+export const dynamic = "force-dynamic";
+
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const settings = toPublicSettings(await getSiteSettings());
 
