@@ -98,10 +98,15 @@ Open **http://localhost:3000/admin** — the admin dashboard.
 
 ## Production build
 
+The production build does not modify the database. Apply schema changes and seed a new database explicitly before the first deployment:
+
 ```bash
+npm run db:setup
 npm run build
 npm run start
 ```
+
+Do not run `npm run db:push -- --accept-data-loss` against a populated production database. Review and migrate existing data before applying schema changes.
 
 Set `NODE_ENV=production`, a strong `JWT_SECRET` and the real `APP_URL`
 (e.g. `https://cspekmotors.com`) in the environment before starting.
