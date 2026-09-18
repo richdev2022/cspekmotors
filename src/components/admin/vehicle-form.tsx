@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -99,6 +99,12 @@ export function VehicleForm({
   });
 
   const specsArray = useFieldArray({ control: form.control, name: "specifications" });
+  const categoryId = useWatch({ control: form.control, name: "categoryId" });
+  const currency = useWatch({ control: form.control, name: "currency" });
+  const condition = useWatch({ control: form.control, name: "condition" });
+  const status = useWatch({ control: form.control, name: "status" });
+  const isPublished = useWatch({ control: form.control, name: "isPublished" });
+  const isFeatured = useWatch({ control: form.control, name: "isFeatured" });
 
   async function onSubmit(values: FormValues) {
     setSaving(true);
@@ -168,7 +174,7 @@ export function VehicleForm({
                 <Input type="number" placeholder="2023" {...form.register("year")} />
               </Field>
               <Field label="Category *" error={err("categoryId")}>
-                <Select value={form.watch("categoryId")} onValueChange={(v) => form.setValue("categoryId", v)}>
+                <Select value={categoryId} onValueChange={(v) => form.setValue("categoryId", v)}>
                   <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>
                     {(categories ?? []).map((c) => (
@@ -193,7 +199,7 @@ export function VehicleForm({
                 <Input type="number" min="0" placeholder="e.g. 85000000" {...form.register("price")} />
               </Field>
               <Field label="Currency">
-                <Select value={form.watch("currency")} onValueChange={(v) => form.setValue("currency", v)}>
+                <Select value={currency} onValueChange={(v) => form.setValue("currency", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="NGN">NGN — Naira (₦)</SelectItem>
@@ -204,7 +210,7 @@ export function VehicleForm({
                 </Select>
               </Field>
               <Field label="Condition">
-                <Select value={form.watch("condition")} onValueChange={(v) => form.setValue("condition", v)}>
+                <Select value={condition} onValueChange={(v) => form.setValue("condition", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="NEW">Brand New</SelectItem>
@@ -213,7 +219,7 @@ export function VehicleForm({
                 </Select>
               </Field>
               <Field label="Status">
-                <Select value={form.watch("status")} onValueChange={(v) => form.setValue("status", v)}>
+                <Select value={status} onValueChange={(v) => form.setValue("status", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AVAILABLE">Available</SelectItem>
@@ -343,11 +349,11 @@ export function VehicleForm({
       <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-lg backdrop-blur">
         <div className="flex items-center gap-4 text-sm">
           <label className="flex items-center gap-2 font-medium text-zinc-700">
-            <Switch checked={form.watch("isPublished")} onCheckedChange={(v) => form.setValue("isPublished", v)} />
+            <Switch checked={isPublished} onCheckedChange={(v) => form.setValue("isPublished", v)} />
             Published (visible on website)
           </label>
           <label className="flex items-center gap-2 font-medium text-zinc-700">
-            <Switch checked={form.watch("isFeatured")} onCheckedChange={(v) => form.setValue("isFeatured", v)} />
+            <Switch checked={isFeatured} onCheckedChange={(v) => form.setValue("isFeatured", v)} />
             Featured on homepage
           </label>
         </div>

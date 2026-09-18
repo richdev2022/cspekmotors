@@ -303,7 +303,7 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
             <WizardUploader open={open} onDone={onDone} onFinished={() => setOpen(false)} />
           </TabsContent>
           <TabsContent value="manual" className="mt-4">
-            <ManualUploader open={open} onDone={onDone} onFinished={() => setOpen(false)} />
+            <ManualUploader key={open ? "open" : "closed"} open={open} onDone={onDone} onFinished={() => setOpen(false)} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -567,7 +567,7 @@ function WizardFileRow({
     <li className="flex gap-3 rounded-xl border border-zinc-200 bg-white p-2.5">
       <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
         {wf.previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+
           <img src={wf.previewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-zinc-400">
@@ -689,14 +689,6 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
   const [progress, setProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) {
-      setFiles([]);
-      setTarget("");
-      setProgress(0);
-      setUploading(false);
-    }
-  }, [open]);
 
   async function handleUpload() {
     if (!target || files.length === 0) {
