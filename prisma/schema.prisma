@@ -1,0 +1,218 @@
+// ============================================================
+// C-SPEK MOTORS LTD — Prisma Schema
+// Development: SQLite | Production: PostgreSQL-compatible
+// (Prisma enums are not supported on SQLite, so status fields
+//  use String + Zod validation — fully portable to Postgres.)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// Admin users
+// role: SUPER_ADMIN | ADMIN
+// ------------------------------------------------------------
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN") // SUPER_ADMIN | ADMIN
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+// ------------------------------------------------------------
+// Vehicle categories (managed from admin, never hardcoded)
+// ------------------------------------------------------------
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  video       String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicles Vehicle[]
+  media    Media[]
+}
+
+// ------------------------------------------------------------
+// Vehicles
+// status: AVAILABLE | RESERVED | SOLD | HIDDEN
+// condition: NEW | USED
+// specifications: JSON string — [{ label, value }]
+// seoKeywords: comma-separated string
+// ------------------------------------------------------------
+model Vehicle {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  brand           String
+  model           String
+  year            Int
+  categoryId      String
+  price           Float?
+  currency        String   @default("NGN")
+  condition       String   @default("USED") // NEW | USED
+  status          String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | HIDDEN
+  location        String?
+  shortDescription String?
+  description     String?
+  specifications  String?  // JSON: [{ label, value }]
+  mileage         Int?
+  transmission    String?
+  fuelType        String?
+  engine          String?
+  colour          String?
+  bodyType        String?
+  driveType       String?
+  seats           Int?
+  isFeatured      Boolean  @default(false)
+  isPublished     Boolean  @default(true)
+  seoTitle        String?
+  seoDescription  String?
+  seoKeywords     String?
+  viewCount       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  media    Media[]
+  enquiries Enquiry[]
+}
+
+// ------------------------------------------------------------
+// Media library — images & videos, always tied to a vehicle
+// and/or a category. type: IMAGE | VIDEO
+// ------------------------------------------------------------
+model Media {
+  id         String   @id @default(cuid())
+  vehicleId  String?
+  categoryId String?
+  type       String   @default("IMAGE") // IMAGE | VIDEO
+  url        String
+  thumbnail  String?
+  filename   String
+  mimeType   String?
+  fileSize   Int?
+  caption    String?
+  sortOrder  Int      @default(0)
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  vehicle  Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------
+// Customer enquiries (vehicle-specific)
+// status: NEW | CONTACTED | IN_PROGRESS | COMPLETED | CLOSED
+// ------------------------------------------------------------
+model Enquiry {
+  id             String   @id @default(cuid())
+  vehicleId      String?
+  vehicleName    String   // snapshot — survives vehicle deletion
+  vehicleCategory String? // snapshot
+  customerName   String
+  email          String
+  phone          String
+  message        String
+  status         String   @default("NEW") // NEW | CONTACTED | IN_PROGRESS | COMPLETED | CLOSED
+  whatsappUrl    String?  // generated WhatsApp deep link stored for admin reuse
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicle     Vehicle?            @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  attachments EnquiryAttachment[]
+}
+
+// ------------------------------------------------------------
+// Enquiry attachments (optional images/files uploaded by customer)
+// ------------------------------------------------------------
+model EnquiryAttachment {
+  id        String   @id @default(cuid())
+  enquiryId String
+  fileUrl   String
+  fileName  String
+  fileType  String?
+  createdAt DateTime @default(now())
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------
+// General contact messages (contact page form)
+// status: NEW | READ | ARCHIVED
+// ------------------------------------------------------------
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    String   @default("NEW") // NEW | READ | ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// Site settings — single row (id = 1), editable from admin.
+// socialLinks / businessHours / seoDefaults stored as JSON strings.
+// ------------------------------------------------------------
+model SiteSettings {
+  id                 String   @id @default("main")
+  companyName        String   @default("C-SPEK MOTORS LTD")
+  logo               String?
+  logoLight          String?  // logo used on white/light backgrounds (dark artwork)
+  logoDark           String?  // logo used on dark backgrounds (silver artwork)
+  tagline            String   @default("Quality Vehicles. Trusted Deals.")
+  phone              String?
+  phoneSecondary     String?  // second company phone line
+  whatsapp           String?
+  email              String?
+  address            String?
+  businessHours      String?  // JSON: [{ days, hours }]
+  mapUrl             String?
+  facebook           String?
+  instagram          String?
+  tiktok             String?
+  twitter            String?
+  youtube            String?
+  websiteTitle       String   @default("C-SPEK MOTORS LTD — Quality Vehicles. Trusted Deals.")
+  websiteDescription String   @default("C-SPEK MOTORS LTD is a trusted Nigerian automobile dealership offering cars, SUVs, trucks, trailers, buses and vans for sale.")
+  seoDefaultTitle    String?
+  seoDefaultDescription String?
+  socialSharingImage String?
+  updatedAt          DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// Audit log — important admin actions
+// ------------------------------------------------------------
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  adminName  String
+  action     String
+  resource   String
+  resourceId String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  admin AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+}

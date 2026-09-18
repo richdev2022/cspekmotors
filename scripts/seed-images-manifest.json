@@ -1,0 +1,65 @@
+{
+  "hero": [
+    "/api/files/seed/hero-1.jpg",
+    "/api/files/seed/hero-2.jpg",
+    "/api/files/seed/hero-3.jpg"
+  ],
+  "cat-cars": [
+    "/api/files/seed/cat-cars-1.jpg",
+    "/api/files/seed/cat-cars-2.jpg"
+  ],
+  "cat-suvs": [
+    "/api/files/seed/cat-suvs-1.jpg",
+    "/api/files/seed/cat-suvs-2.jpg",
+    "/api/files/seed/cat-suvs-3.jpg"
+  ],
+  "cat-trucks": [
+    "/api/files/seed/cat-trucks-1.jpg",
+    "/api/files/seed/cat-trucks-2.jpg",
+    "/api/files/seed/cat-trucks-3.jpg"
+  ],
+  "cat-trailers": [
+    "/api/files/seed/cat-trailers-1.png",
+    "/api/files/seed/cat-trailers-2.jpg"
+  ],
+  "cat-buses": [
+    "/api/files/seed/cat-buses-1.jpg",
+    "/api/files/seed/cat-buses-2.jpg"
+  ],
+  "cat-vans": [
+    "/api/files/seed/cat-vans-1.jpg",
+    "/api/files/seed/cat-vans-2.jpg"
+  ],
+  "cat-commercial": [
+    "/api/files/seed/cat-commercial-1.jpg",
+    "/api/files/seed/cat-commercial-2.jpg",
+    "/api/files/seed/cat-commercial-3.jpg"
+  ],
+  "cat-other": [
+    "/api/files/seed/cat-other-1.jpg",
+    "/api/files/seed/cat-other-2.jpg"
+  ],
+  "lexus": [
+    "/api/files/seed/lexus-1.jpg",
+    "/api/files/seed/lexus-2.jpg"
+  ],
+  "camry": [
+    "/api/files/seed/camry-1.jpg",
+    "/api/files/seed/camry-2.jpg"
+  ],
+  "sprinter": [
+    "/api/files/seed/sprinter-1.jpg",
+    "/api/files/seed/sprinter-2.jpg"
+  ],
+  "coaster": [
+    "/api/files/seed/coaster-1.jpg"
+  ],
+  "man-truck": [
+    "/api/files/seed/man-truck-1.jpg",
+    "/api/files/seed/man-truck-2.png"
+  ],
+  "showroom": [
+    "/api/files/seed/showroom-1.jpg",
+    "/api/files/seed/showroom-2.jpg"
+  ]
+}
