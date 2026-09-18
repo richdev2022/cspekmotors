@@ -1,8 +1,7 @@
 // ============================================================
 // C-SPEK MOTORS LTD — Prisma Schema
-// Development: SQLite | Production: PostgreSQL-compatible
-// (Prisma enums are not supported on SQLite, so status fields
-//  use String + Zod validation — fully portable to Postgres.)
+// PostgreSQL datasource for local and production deployments.
+// Status fields use String + Zod validation for application-level portability.
 // ============================================================
 
 generator client {
@@ -10,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
