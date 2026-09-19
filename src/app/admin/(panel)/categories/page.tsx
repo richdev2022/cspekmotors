@@ -31,6 +31,7 @@ export default function AdminCategoriesPage() {
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const pendingImageRef = useRef<string | null>(null);
 
@@ -79,6 +80,20 @@ export default function AdminCategoriesPage() {
       return res.data;
     },
     onSuccess: () => { toast.success("Visibility updated."); refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkRemove = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await api.del<{ deleted: number }>("/api/admin/categories", { ids });
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (result) => {
+      setSelectedIds([]);
+      toast.success(`${result?.deleted ?? 0} categor${result?.deleted === 1 ? "y" : "ies"} deleted.`);
+      refresh();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -148,6 +163,18 @@ export default function AdminCategoriesPage() {
         </Button>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="text-sm font-medium text-red-800">{selectedIds.length} categor{selectedIds.length === 1 ? "y" : "ies"} selected</span>
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Delete ${selectedIds.length} selected categor${selectedIds.length === 1 ? "y" : "ies"}? This cannot be undone.`)) bulkRemove.mutate(selectedIds); }} disabled={bulkRemove.isPending}>
+            {bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete selected
+          </Button>
+        </div>
+      )}
+      {categories && categories.length > 0 && (
+        <label className="flex items-center gap-2 text-sm text-zinc-600"><input type="checkbox" aria-label="Select all categories" checked={selectedIds.length === categories.length} onChange={(e) => setSelectedIds(e.target.checked ? categories.map((c) => c.id) : [])} className="h-4 w-4 rounded border-zinc-300 accent-amber-500" /> Select all categories</label>
+      )}
+
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
@@ -166,7 +193,8 @@ export default function AdminCategoriesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories!.map((c) => (
-            <Card key={c.id} className={cn("overflow-hidden", !c.isActive && "opacity-60")}>
+            <Card key={c.id} className={cn("relative overflow-hidden", !c.isActive && "opacity-60", selectedIds.includes(c.id) && "ring-2 ring-amber-500")}>
+              <input type="checkbox" aria-label={`Select ${c.name}`} checked={selectedIds.includes(c.id)} onChange={(e) => setSelectedIds((current) => e.target.checked ? [...current, c.id] : current.filter((id) => id !== c.id))} className="absolute left-2 top-2 z-10 h-4 w-4 rounded border-zinc-300 accent-amber-500" />
               <div className="relative aspect-[16/8] bg-zinc-100">
                 {c.image ? (
                    

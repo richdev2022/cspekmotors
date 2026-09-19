@@ -1,12 +1,31 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { assertSameOrigin, handleApiError, jsonOk } from "@/lib/api-utils";
+import { assertSameOrigin, handleApiError, jsonError, jsonOk } from "@/lib/api-utils";
 import { categoryCreateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/format";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
+
+export async function DELETE(req: NextRequest) {
+  try {
+    assertSameOrigin(req);
+    const admin = await requireAdmin();
+    const body = await req.json().catch(() => null);
+    const ids = Array.isArray(body?.ids) ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0) : [];
+    if (ids.length === 0) return jsonError("Select at least one category.", 400);
+    const categories = await db.category.findMany({ where: { id: { in: ids } }, include: { _count: { select: { vehicles: true } } } });
+    if (categories.length !== ids.length) return jsonError("One or more categories were not found.", 404);
+    const blocked = categories.find((category) => category._count.vehicles > 0);
+    if (blocked) return jsonError(`Cannot delete "${blocked.name}" because it still contains vehicles.`, 409);
+    await db.category.deleteMany({ where: { id: { in: ids } } });
+    await logAudit({ adminId: admin.id, adminName: admin.name, action: "DELETE", resource: "CATEGORY", details: `Bulk deleted ${categories.length} categories` });
+    return jsonOk({ deleted: categories.length });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
 
 export async function GET() {
   try {

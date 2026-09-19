@@ -13,6 +13,7 @@ import { VehicleCard } from "@/components/site/vehicle-card";
 import { Button } from "@/components/ui/button";
 import { WhatsAppIcon } from "@/components/site/floating-whatsapp";
 import { generateWhatsAppVehicleLink } from "@/lib/whatsapp";
+import { parseSpecifications } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -141,8 +142,8 @@ export default async function VehicleDetailPage({ params }: Props) {
           <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-center gap-2">
-                <VehicleStatusBadge status={vehicle.status} />
-                {vehicle.isFeatured && (
+                {vehicle.publishDetails && <VehicleStatusBadge status={vehicle.status} />}
+                {vehicle.publishDetails && vehicle.isFeatured && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-950 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
                     <BadgeCheck className="h-3.5 w-3.5" /> Featured
                   </span>
@@ -156,62 +157,75 @@ export default async function VehicleDetailPage({ params }: Props) {
                 {vehicle.title}
               </h1>
 
-              <div className="mt-5 rounded-xl bg-zinc-50 p-4">
-                <p className="flex items-center gap-2 text-sm font-medium text-zinc-700">
-                  <MessageCircleQuestion className="h-4.5 w-4.5 text-amber-500" />
-                  Price &amp; full details available on request.
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">
-                  Our sales team is ready to share pricing, specifications, import details and more — reach out and get a
-                  response the same day.
-                </p>
-              </div>
-
-              <div className="mt-6 space-y-2.5">
-                {vehicle.status !== "SOLD" && (
-                  <>
-                    <VehicleEnquiryButton
-                      vehicle={{
-                        vehicleId: vehicle.id,
-                        vehicleTitle: vehicle.title,
-                        vehicleCategory: vehicle.category.name,
-                        vehicleSlug: vehicle.slug,
-                      }}
-                      label="Enquire Now"
-                      className="w-full h-12 rounded-full text-base"
-                    />
-                    <Button asChild className="h-12 w-full rounded-full bg-[#25D366] text-base font-semibold text-white hover:bg-[#1fb857]">
-                      <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                        <WhatsAppIcon className="h-5 w-5" /> Chat on WhatsApp
-                      </a>
-                    </Button>
-                  </>
-                )}
-                {vehicle.status === "SOLD" && (
-                  <div className="rounded-xl bg-red-50 p-4 text-center">
-                    <p className="font-display text-lg font-bold text-red-700">SOLD</p>
-                    <p className="mt-1 text-xs leading-relaxed text-red-600/80">
-                      This vehicle has been sold. Browse similar vehicles below or contact us — new stock arrives weekly.
+              {vehicle.publishDetails ? (
+                <>
+                  <div className="mt-5 rounded-xl bg-zinc-50 p-4">
+                    <p className="text-2xl font-bold text-zinc-950">
+                      {vehicle.price !== null ? new Intl.NumberFormat("en-NG", { style: "currency", currency: vehicle.currency, maximumFractionDigits: 0 }).format(vehicle.price) : "Price on request"}
                     </p>
-                    <Button asChild variant="outline" className="mt-3 w-full rounded-full border-red-200 text-red-700 hover:bg-red-50">
-                      <Link href="/vehicles">Browse Available Vehicles</Link>
-                    </Button>
                   </div>
-                )}
-              </div>
+                  {(vehicle.shortDescription || vehicle.description) && (
+                    <div className="mt-5 space-y-2 text-sm leading-relaxed text-zinc-600">
+                      {vehicle.shortDescription && <p className="font-medium text-zinc-800">{vehicle.shortDescription}</p>}
+                      {vehicle.description && <p className="whitespace-pre-line">{vehicle.description}</p>}
+                    </div>
+                  )}
+                  {parseSpecifications(vehicle.specifications).length > 0 && (
+                    <dl className="mt-5 grid grid-cols-2 gap-2 border-t border-zinc-100 pt-5 text-sm">
+                      {parseSpecifications(vehicle.specifications).map((spec) => (
+                        <div key={spec.label} className="rounded-lg bg-zinc-50 p-2.5">
+                          <dt className="text-xs text-zinc-500">{spec.label}</dt>
+                          <dd className="mt-0.5 font-medium text-zinc-800">{spec.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </>
+              ) : (
+                <div className="mt-5 rounded-xl bg-zinc-50 p-4">
+                  <p className="text-sm text-zinc-600">More details available on request.</p>
+                </div>
+              )}
 
-              <div className="mt-6 space-y-2 border-t border-zinc-100 pt-5 text-sm">
-                {s.phone && (
-                  <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="flex items-center gap-2.5 text-zinc-600 transition-colors hover:text-amber-600">
-                    <Phone className="h-4 w-4 text-zinc-400" /> {s.phone}
-                  </a>
-                )}
-                {s.email && (
-                  <a href={`mailto:${s.email}`} className="flex items-center gap-2.5 text-zinc-600 transition-colors hover:text-amber-600">
-                    <Mail className="h-4 w-4 text-zinc-400" /> {s.email}
-                  </a>
-                )}
-              </div>
+              {vehicle.publishDetails && (
+                <>
+                  <div className="mt-6 space-y-2.5">
+                    {vehicle.status !== "SOLD" && (
+                      <>
+                        <VehicleEnquiryButton
+                          vehicle={{
+                            vehicleId: vehicle.id,
+                            vehicleTitle: vehicle.title,
+                            vehicleCategory: vehicle.category.name,
+                            vehicleSlug: vehicle.slug,
+                          }}
+                          label="Enquire Now"
+                          className="w-full h-12 rounded-full text-base"
+                        />
+                        <Button asChild className="h-12 w-full rounded-full bg-[#25D366] text-base font-semibold text-white hover:bg-[#1fb857]">
+                          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                            <WhatsAppIcon className="h-5 w-5" /> Chat on WhatsApp
+                          </a>
+                        </Button>
+                      </>
+                    )}
+                    {vehicle.status === "SOLD" && (
+                      <div className="rounded-xl bg-red-50 p-4 text-center">
+                        <p className="font-display text-lg font-bold text-red-700">SOLD</p>
+                        <p className="mt-1 text-xs leading-relaxed text-red-600/80">This vehicle has been sold. Browse similar vehicles below or contact us — new stock arrives weekly.</p>
+                        <Button asChild variant="outline" className="mt-3 w-full rounded-full border-red-200 text-red-700 hover:bg-red-50">
+                          <Link href="/vehicles">Browse Available Vehicles</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 space-y-2 border-t border-zinc-100 pt-5 text-sm">
+                    {s.phone && <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="flex items-center gap-2.5 text-zinc-600 transition-colors hover:text-amber-600"><Phone className="h-4 w-4 text-zinc-400" /> {s.phone}</a>}
+                    {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-2.5 text-zinc-600 transition-colors hover:text-amber-600"><Mail className="h-4 w-4 text-zinc-400" /> {s.email}</a>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

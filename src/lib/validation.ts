@@ -79,6 +79,7 @@ const vehicleBase = {
   specifications: z.array(specificationSchema).max(40).default([]),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(true),
+  publishDetails: z.boolean().default(false),
   seoTitle: z.string().max(200).optional().or(z.literal("")),
   seoDescription: z.string().max(320).optional().or(z.literal("")),
   seoKeywords: z.string().max(300).optional().or(z.literal("")),

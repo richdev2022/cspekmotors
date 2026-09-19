@@ -51,6 +51,7 @@ const formSchema = z.object({
   specifications: z.array(z.object({ label: z.string().min(1, "Label required"), value: z.string().min(1, "Value required") })).default([]),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(true),
+  publishDetails: z.boolean().default(false),
   seoTitle: z.string().max(200).optional(),
   seoDescription: z.string().max(320).optional(),
   seoKeywords: z.string().max(300).optional(),
@@ -94,7 +95,7 @@ export function VehicleForm({
       categoryId: "", price: "", currency: "NGN", condition: "USED", status: "AVAILABLE",
       location: "", shortDescription: "", description: "", mileage: "", transmission: "",
       fuelType: "", engine: "", colour: "", bodyType: "", driveType: "", seats: "",
-      specifications: [], isFeatured: false, isPublished: true, seoTitle: "", seoDescription: "", seoKeywords: "", slug: "",
+      specifications: [], isFeatured: false, isPublished: true, publishDetails: false, seoTitle: "", seoDescription: "", seoKeywords: "", slug: "",
     },
   });
 
@@ -105,6 +106,7 @@ export function VehicleForm({
   const status = useWatch({ control: form.control, name: "status" });
   const isPublished = useWatch({ control: form.control, name: "isPublished" });
   const isFeatured = useWatch({ control: form.control, name: "isFeatured" });
+  const publishDetails = useWatch({ control: form.control, name: "publishDetails" });
 
   async function onSubmit(values: FormValues) {
     setSaving(true);
@@ -195,7 +197,7 @@ export function VehicleForm({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Field label="Price (admin only)" error={err("price")} hint="Kept private — never shown on the public site">
+              <Field label="Price" error={err("price")} hint={publishDetails ? "Visible on the public website" : "Kept private until details are published"}>
                 <Input type="number" min="0" placeholder="e.g. 85000000" {...form.register("price")} />
               </Field>
               <Field label="Currency">
@@ -232,6 +234,13 @@ export function VehicleForm({
               <Field label="Location" className="sm:col-span-2">
                 <Input placeholder="e.g. Lagos, Nigeria" {...form.register("location")} />
               </Field>
+              <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3.5 py-3 sm:col-span-2 lg:col-span-4">
+                <div>
+                  <Label>Publish vehicle details</Label>
+                  <p className="text-xs text-zinc-500">{publishDetails ? "Pricing and specifications are visible to customers." : "Customers see only the image, name and category."}</p>
+                </div>
+                <Switch checked={publishDetails} onCheckedChange={(value) => form.setValue("publishDetails", value)} />
+              </div>
             </CardContent>
           </Card>
 

@@ -43,16 +43,18 @@ export function VehicleCard({ vehicle }: { vehicle: VehicleWithRelations }) {
             <CarPlaceholder />
           </div>
         )}
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <VehicleStatusBadge status={vehicle.status} />
-          {vehicle.isFeatured && (
-            <Badge className="bg-zinc-950/85 text-amber-400 uppercase tracking-wide backdrop-blur">Featured</Badge>
-          )}
-        </div>
-        {imageCount > 1 && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-zinc-950/70 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-            <Eye className="h-3 w-3" /> {imageCount}
-          </span>
+        {vehicle.publishDetails && (
+          <>
+            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+              <VehicleStatusBadge status={vehicle.status} />
+              {vehicle.isFeatured && <Badge className="bg-zinc-950/85 text-amber-400 uppercase tracking-wide backdrop-blur">Featured</Badge>}
+            </div>
+            {imageCount > 1 && (
+              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-zinc-950/70 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+                <Eye className="h-3 w-3" /> {imageCount}
+              </span>
+            )}
+          </>
         )}
       </Link>
 
@@ -69,26 +71,20 @@ export function VehicleCard({ vehicle }: { vehicle: VehicleWithRelations }) {
           </div>
         </div>
 
-        <p className="mt-2 text-sm italic text-zinc-400">Contact us for price &amp; full details.</p>
-
-        <div className="mt-4 flex items-end justify-between border-t border-zinc-100 pt-4">
-          <p className="text-xs text-zinc-400">{imageCount > 0 ? `${imageCount} photo${imageCount > 1 ? "s" : ""}` : ""}</p>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button asChild variant="outline" className="rounded-full font-medium">
-            <Link href={`/vehicles/${vehicle.slug}`}>View Details</Link>
-          </Button>
-          <VehicleEnquiryButton
-            vehicle={{
-              vehicleId: vehicle.id,
-              vehicleTitle: vehicle.title,
-              vehicleCategory: vehicle.category.name,
-              vehicleSlug: vehicle.slug,
-            }}
-            className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold rounded-full"
-          />
-        </div>
+        {vehicle.publishDetails && (
+          <>
+            <p className="mt-2 text-base font-semibold text-zinc-900">
+              {vehicle.price !== null ? new Intl.NumberFormat("en-NG", { style: "currency", currency: vehicle.currency, maximumFractionDigits: 0 }).format(vehicle.price) : "Price on request"}
+            </p>
+            <div className="mt-4 flex items-end justify-between border-t border-zinc-100 pt-4">
+              <p className="text-xs text-zinc-400">{imageCount > 0 ? `${imageCount} photo${imageCount > 1 ? "s" : ""}` : ""}</p>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button asChild variant="outline" className="rounded-full font-medium"><Link href={`/vehicles/${vehicle.slug}`}>View Details</Link></Button>
+              <VehicleEnquiryButton vehicle={{ vehicleId: vehicle.id, vehicleTitle: vehicle.title, vehicleCategory: vehicle.category.name, vehicleSlug: vehicle.slug }} className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold rounded-full" />
+            </div>
+          </>
+        )}
       </div>
     </article>
   );

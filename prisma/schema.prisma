@@ -82,6 +82,7 @@ model Vehicle {
   seats           Int?
   isFeatured      Boolean  @default(false)
   isPublished     Boolean  @default(true)
+  publishDetails  Boolean  @default(false)
   seoTitle        String?
   seoDescription  String?
   seoKeywords     String?

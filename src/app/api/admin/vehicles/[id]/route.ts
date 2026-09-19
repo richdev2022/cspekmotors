@@ -79,6 +79,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         ...(d.specifications !== undefined && { specifications: JSON.stringify(d.specifications) }),
         ...(d.isFeatured !== undefined && { isFeatured: d.isFeatured }),
         ...(d.isPublished !== undefined && { isPublished: d.isPublished }),
+        ...(d.publishDetails !== undefined && { publishDetails: d.publishDetails }),
         ...(d.seoTitle !== undefined && { seoTitle: d.seoTitle || null }),
         ...(d.seoDescription !== undefined && { seoDescription: d.seoDescription || null }),
         ...(d.seoKeywords !== undefined && { seoKeywords: d.seoKeywords || null }),

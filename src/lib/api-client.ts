@@ -38,7 +38,8 @@ export const api = {
     request<T>(url, { method: "PUT", body: body !== undefined ? JSON.stringify(body) : undefined }),
   patch: <T>(url: string, body?: unknown) =>
     request<T>(url, { method: "PATCH", body: body !== undefined ? JSON.stringify(body) : undefined }),
-  del: <T>(url: string) => request<T>(url, { method: "DELETE" }),
+  del: <T>(url: string, body?: unknown) =>
+    request<T>(url, { method: "DELETE", body: body !== undefined ? JSON.stringify(body) : undefined }),
   upload: <T>(url: string, formData: FormData, onProgress?: (pct: number) => void) =>
     new Promise<ApiResult<T>>((resolve) => {
       const xhr = new XMLHttpRequest();
