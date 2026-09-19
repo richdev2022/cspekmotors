@@ -651,7 +651,7 @@ function WizardFileRow({
             <Loader2 className="h-3 w-3 animate-spin" /> AI is looking at this file…
           </p>
         )}
-        {wf.detected && (wf.vehicleTitle || wf.brand || wf.model) && (
+        {wf.detected && (wf.vehicleTitle || wf.brand || wf.model || wf.detectedName) && (
           <p className="truncate text-xs font-medium text-emerald-700" title={wf.vehicleTitle || wf.detectedName || undefined}>
             <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" />
             {wf.vehicleTitle ? `Likely ${wf.vehicleTitle}` : [wf.brand, wf.model, wf.detectedName].filter(Boolean).join(" ")}
@@ -671,31 +671,58 @@ function WizardFileRow({
         )}
 
         <div className="flex items-center gap-2">
-          <Select value={wf.target} onValueChange={onTarget} disabled={disabled}>
-            <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
-              <SelectValue placeholder="Assign destination…" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel>Category images</SelectLabel>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={`category:${c.id}`}>{c.name}</SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {vehicles.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel>Vehicle galleries</SelectLabel>
-                  {vehicles.map((v) => (
+          {wf.detected ? (
+            <Select value={wf.target} onValueChange={onTarget} disabled={disabled}>
+              <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
+                <SelectValue placeholder="Assign destination…" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Category images</SelectLabel>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={`category:${c.id}`}>{c.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {vehicles.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Vehicle galleries</SelectLabel>
+                    {vehicles.map((v) => (
+                      <SelectItem key={v.id} value={`vehicle:${v.id}`}>
+                        {v.title}{v.categoryName ? ` — ${v.categoryName}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+              <Select value={wf.target.startsWith("vehicle:") ? wf.target : ""} onValueChange={onTarget} disabled={disabled || vehicles.length === 0}>
+                <SelectTrigger className="h-8 min-w-0 text-xs">
+                  <SelectValue placeholder="Manual vehicle name…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.length > 0 ? vehicles.map((v) => (
                     <SelectItem key={v.id} value={`vehicle:${v.id}`}>
                       {v.title}{v.categoryName ? ` — ${v.categoryName}` : ""}
                     </SelectItem>
+                  )) : <SelectItem value="no-vehicles" disabled>No vehicle posts available</SelectItem>}
+                </SelectContent>
+              </Select>
+              <Select value={wf.target.startsWith("category:") ? wf.target : ""} onValueChange={onTarget} disabled={disabled || categories.length === 0}>
+                <SelectTrigger className="h-8 min-w-0 text-xs">
+                  <SelectValue placeholder="Manual category…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={`category:${c.id}`}>{c.name}</SelectItem>
                   ))}
-                </SelectGroup>
-              )}
-            </SelectContent>
-          </Select>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <button
             type="button"
             onClick={onRetry}
