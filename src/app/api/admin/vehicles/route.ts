@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { assertSameOrigin, handleApiError, jsonOk, parseIntParam } from "@/lib/api-utils";
+import { assertSameOrigin, handleApiError, jsonError, jsonOk, parseIntParam } from "@/lib/api-utils";
 import { vehicleCreateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/format";
 import { logAudit } from "@/lib/audit";
@@ -22,6 +22,26 @@ async function uniqueSlug(base: string): Promise<string> {
     if (n > 50) { candidate = `${root}-${Date.now().toString(36)}`; break; }
   }
   return candidate;
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    assertSameOrigin(req);
+    const admin = await requireAdmin();
+    const body = await req.json().catch(() => null);
+    const ids = Array.isArray(body?.ids) ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0) : [];
+    if (ids.length === 0) return jsonError("Select at least one vehicle.", 400);
+
+    const vehicles = await db.vehicle.findMany({ where: { id: { in: ids } }, include: { media: true } });
+    if (vehicles.length !== ids.length) return jsonError("One or more vehicles were not found.", 404);
+    await db.vehicle.deleteMany({ where: { id: { in: ids } } });
+    const storage = (await import("@/lib/storage")).getStorageProvider();
+    await Promise.all(vehicles.flatMap((vehicle) => vehicle.media.map((media) => storage.delete(media.url).catch(() => {}))));
+    await logAudit({ adminId: admin.id, adminName: admin.name, action: "DELETE", resource: "VEHICLE", details: `Bulk deleted ${vehicles.length} vehicles` });
+    return jsonOk({ deleted: vehicles.length });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -101,6 +121,7 @@ export async function POST(req: NextRequest) {
         specifications: JSON.stringify(d.specifications),
         isFeatured: d.isFeatured,
         isPublished: d.isPublished,
+        publishDetails: d.publishDetails,
         seoTitle: d.seoTitle || `${d.title} for Sale in Nigeria | C-SPEK MOTORS LTD`,
         seoDescription: d.seoDescription || d.shortDescription || null,
         seoKeywords: d.seoKeywords || null,

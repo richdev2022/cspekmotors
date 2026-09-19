@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   UploadCloud, Loader2, Images, Play, Trash2, ChevronDown, ChevronRight, Star, X,
   Wand2, Settings2, Sparkles, Film, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
@@ -32,6 +32,7 @@ export default function AdminMediaPage() {
   const qc = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { data, isLoading, isError, error } = useQuery<MediaData>({
     queryKey: ["admin-media", typeFilter],
@@ -44,6 +45,22 @@ export default function AdminMediaPage() {
   });
 
   const deleteMedia = useDeleteMedia(qc);
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await api.del<{ deleted: number }>("/api/admin/media", { ids });
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (result) => {
+      setSelectedIds([]);
+      toast.success(`${result?.deleted ?? 0} media item(s) deleted.`);
+      qc.invalidateQueries({ queryKey: ["admin-media"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const allMedia = data ? [...data.categories.flatMap((category) => [...category.media, ...category.vehicles.flatMap((vehicle) => vehicle.media)]), ...data.unassigned] : [];
 
   function toggle(key: string) {
     setExpanded((e) => ({ ...e, [key]: !e[key] }));
@@ -68,6 +85,18 @@ export default function AdminMediaPage() {
           <UploadDialog onDone={() => { qc.invalidateQueries({ queryKey: ["admin-media"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); }} />
         </div>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="text-sm font-medium text-red-800">{selectedIds.length} media item(s) selected</span>
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Delete ${selectedIds.length} selected media item(s)? This cannot be undone.`)) bulkDelete.mutate(selectedIds); }} disabled={bulkDelete.isPending}>
+            {bulkDelete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete selected
+          </Button>
+        </div>
+      )}
+      {allMedia.length > 0 && (
+        <label className="flex items-center gap-2 text-sm text-zinc-600"><input type="checkbox" aria-label="Select all media" checked={selectedIds.length === allMedia.length} onChange={(e) => setSelectedIds(e.target.checked ? allMedia.map((item) => item.id) : [])} className="h-4 w-4 rounded border-zinc-300 accent-amber-500" /> Select all media</label>
+      )}
 
       {isLoading && (
         <div className="space-y-4">
@@ -113,7 +142,7 @@ export default function AdminMediaPage() {
                     <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
                       Category images ({categoryOwnMedia.length})
                     </p>
-                    <MediaGrid items={categoryOwnMedia} onDelete={deleteMedia} />
+                    <MediaGrid items={categoryOwnMedia} onDelete={deleteMedia} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />
                   </div>
                 )}
 
@@ -124,7 +153,7 @@ export default function AdminMediaPage() {
                       {cat.name} → <span className="normal-case text-amber-600">{v.title}</span>
                       <span className="font-normal normal-case text-zinc-300">({v.media.length})</span>
                     </p>
-                    <MediaGrid items={v.media} onDelete={deleteMedia} />
+                    <MediaGrid items={v.media} onDelete={deleteMedia} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />
                   </div>
                 ))}
               </div>
@@ -139,7 +168,7 @@ export default function AdminMediaPage() {
           <p className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
             <X className="h-3.5 w-3.5" /> Unlinked uploads ({data.unassigned.length}) — attached to no vehicle or category
           </p>
-          <MediaGrid items={data.unassigned} onDelete={deleteMedia} />
+          <MediaGrid items={data.unassigned} onDelete={deleteMedia} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />
         </div>
       )}
 
@@ -154,11 +183,12 @@ export default function AdminMediaPage() {
   );
 }
 
-function MediaGrid({ items, onDelete }: { items: MediaItem[]; onDelete: (m: MediaItem) => void }) {
+function MediaGrid({ items, onDelete, selectedIds, setSelectedIds }: { items: MediaItem[]; onDelete: (m: MediaItem) => void; selectedIds: string[]; setSelectedIds: React.Dispatch<React.SetStateAction<string[]>> }) {
   return (
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       {items.map((m) => (
-        <div key={m.id} className="group relative aspect-square overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
+        <div key={m.id} className={cn("group relative aspect-square overflow-hidden rounded-xl border bg-zinc-100", selectedIds.includes(m.id) ? "border-amber-500 ring-2 ring-amber-300" : "border-zinc-200")}>
+          <input type="checkbox" aria-label={`Select ${m.filename}`} checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds((current) => e.target.checked ? [...current, m.id] : current.filter((id) => id !== m.id))} className="absolute left-2 top-2 z-10 h-4 w-4 rounded border-zinc-300 accent-amber-500" />
           { }
           <img src={m.url} alt={m.caption || m.filename} className="h-full w-full object-cover" loading="lazy" />
           {m.type === "VIDEO" && (

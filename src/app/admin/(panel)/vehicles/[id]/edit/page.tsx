@@ -69,6 +69,7 @@ export default function EditVehiclePage({ params }: { params: Promise<{ id: stri
     specifications: parseSpecifications(vehicle.specifications),
     isFeatured: vehicle.isFeatured,
     isPublished: vehicle.isPublished,
+    publishDetails: vehicle.publishDetails,
     seoTitle: vehicle.seoTitle ?? "",
     seoDescription: vehicle.seoDescription ?? "",
     seoKeywords: vehicle.seoKeywords ?? "",

@@ -38,6 +38,7 @@ export default function AdminVehiclesPage() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<VehicleWithRelations | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { data, isLoading, isError, error } = useQuery<ListResponse>({
     queryKey: ["admin-vehicles", { search, status, page }],
@@ -61,6 +62,21 @@ export default function AdminVehiclesPage() {
       qc.invalidateQueries({ queryKey: ["admin-vehicles"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Vehicle updated.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await api.del<{ deleted: number }>("/api/admin/vehicles", { ids });
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (result) => {
+      setSelectedIds([]);
+      qc.invalidateQueries({ queryKey: ["admin-vehicles"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success(`${result?.deleted ?? 0} vehicle(s) deleted.`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -124,12 +140,24 @@ export default function AdminVehiclesPage() {
         </Select>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="text-sm font-medium text-red-800">{selectedIds.length} vehicle(s) selected</span>
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm(`Delete ${selectedIds.length} selected vehicle(s)? This cannot be undone.`)) bulkDelete.mutate(selectedIds); }} disabled={bulkDelete.isPending}>
+            {bulkDelete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete selected
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-zinc-50 hover:bg-zinc-50">
+                <TableHead className="w-10">
+                  <input type="checkbox" aria-label="Select all vehicles on this page" checked={(data?.items.length ?? 0) > 0 && data?.items.every((v) => selectedIds.includes(v.id))} onChange={(e) => setSelectedIds(e.target.checked ? (data?.items.map((v) => v.id) ?? []) : [])} className="h-4 w-4 rounded border-zinc-300 accent-amber-500" />
+                </TableHead>
                 <TableHead className="w-16">Photo</TableHead>
                 <TableHead>Vehicle</TableHead>
                 <TableHead className="hidden md:table-cell">Category</TableHead>
@@ -143,13 +171,13 @@ export default function AdminVehiclesPage() {
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={7}><Skeleton className="h-14 w-full" /></TableCell>
+                    <TableCell colSpan={8}><Skeleton className="h-14 w-full" /></TableCell>
                   </TableRow>
                 ))}
 
               {isError && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-red-600">
+                  <TableCell colSpan={8} className="py-10 text-center text-sm text-red-600">
                     {error instanceof Error ? error.message : "Failed to load vehicles."}
                   </TableCell>
                 </TableRow>
@@ -159,6 +187,9 @@ export default function AdminVehiclesPage() {
                 const primary = v.media.find((m) => m.isPrimary) ?? v.media.find((m) => m.type === "IMAGE");
                 return (
                   <TableRow key={v.id}>
+                    <TableCell>
+                      <input type="checkbox" aria-label={`Select ${v.title}`} checked={selectedIds.includes(v.id)} onChange={(e) => setSelectedIds((current) => e.target.checked ? [...current, v.id] : current.filter((id) => id !== v.id))} className="h-4 w-4 rounded border-zinc-300 accent-amber-500" />
+                    </TableCell>
                     <TableCell>
                       {primary ? (
                          
@@ -214,7 +245,7 @@ export default function AdminVehiclesPage() {
 
               {!isLoading && !isError && (data?.items.length ?? 0) === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={8} className="py-16 text-center">
                     <Car className="mx-auto h-10 w-10 text-zinc-300" />
                     <p className="mt-3 font-display text-lg font-semibold text-zinc-800">No vehicles found</p>
                     <p className="mt-1 text-sm text-zinc-500">
