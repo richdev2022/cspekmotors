@@ -131,10 +131,10 @@ uploads/
 - Files are served back through `GET /api/files/<folder>/<filename>` with HTTP
   range support (video seeking works).
 - Large images are automatically resized/compressed (max width 1920px).
-- **The folder is part of the repository.** When you push the project to GitHub,
-  everything admins upload is included in the repo and stays accessible — no
-  Cloudinary/S3 account needed.
+- Uploads are served through the app and are not automatically committed to Git.
+  Configure `UPLOAD_DIR` to point to persistent storage in production.
 - Optional: set `UPLOAD_DIR=/absolute/path` in `.env` to store uploads elsewhere.
+  This is required on serverless hosts because their local filesystem is ephemeral.
 
 ---
 
