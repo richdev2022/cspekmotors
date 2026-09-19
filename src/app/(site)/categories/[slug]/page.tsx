@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Images } from "lucide-react";
 import { db } from "@/lib/db";
-import { queryVehicles, categoryMediaOrderBy } from "@/lib/vehicles";
+import { queryVehicles, categoryImageOf, categoryMediaOrderBy } from "@/lib/vehicles";
+import { publicMediaUrl } from "@/lib/media";
 import { VehicleCard } from "@/components/site/vehicle-card";
 import { EmptyState } from "@/components/site/empty-state";
 
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${category.name} for Sale in Nigeria | C-SPEK MOTORS LTD`,
       description: category.description || undefined,
       url: `/categories/${category.slug}`,
-      ...(category.image && { images: [{ url: category.image, alt: `${category.name} at C-SPEK MOTORS LTD` }] }),
+      ...(category.image && { images: [{ url: categoryImageOf(category) ?? category.image, alt: `${category.name} at C-SPEK MOTORS LTD` }] }),
     },
   };
 }
@@ -57,11 +58,12 @@ function CategoryGallery({ name, media }: { name: string; media: { id: string; u
         </span>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {media.map((m) =>
-          m.type === "VIDEO" ? (
+        {media.map((m) => {
+          const url = publicMediaUrl(m.url) ?? m.url;
+          return m.type === "VIDEO" ? (
             <video
               key={m.id}
-              src={m.url}
+              src={url}
               controls
               preload="metadata"
               className="aspect-[4/3] w-full rounded-2xl bg-zinc-950 object-contain"
@@ -70,21 +72,21 @@ function CategoryGallery({ name, media }: { name: string; media: { id: string; u
           ) : (
             <a
               key={m.id}
-              href={m.url}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="group relative block aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-100"
               title={m.caption || `${name} photo`}
             >
               <img
-                src={m.url}
+                src={url}
                 alt={m.caption || `${name} photo`}
                 loading="lazy"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </a>
-          ),
-        )}
+          );
+        })}
       </div>
     </section>
   );

@@ -12,6 +12,14 @@ export const ALLOWED_ATTACHMENT_TYPES = [
 export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 export const VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 
+export function publicMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  return url.startsWith("/") ? `${appUrl}${url}` : `${appUrl}/${url}`;
+}
+
 function maxMb(kind: "image" | "video"): number {
   const fallback = kind === "image" ? 8 : 120;
   const val = Number(process.env[kind === "image" ? "MEDIA_MAX_IMAGE_MB" : "MEDIA_MAX_VIDEO_MB"]);
