@@ -37,7 +37,12 @@ interface ZaiVisionResponse {
 /** Lazily create the ZAI client (config is read from /etc/.z-ai-config). */
 async function getZai() {
   if (!zaiPromise) {
-    zaiPromise = import("z-ai-web-dev-sdk").then((mod) => mod.default.create());
+    zaiPromise = import("z-ai-web-dev-sdk")
+      .then((mod) => mod.default.create())
+      .catch((err) => {
+        zaiPromise = null;
+        throw err;
+      });
   }
   return zaiPromise;
 }
@@ -131,7 +136,7 @@ export async function classifyVehicleMedia(
   vehicleNames: string[] = [],
 ): Promise<DetectedCategory> {
   const zai = await getZai();
-  const dataUrl = `data:image/jpeg;base64,${buffer.toString("base64")}`;
+  const dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
 
   const prompt = [
     "You are classifying media for an automobile dealership inventory.",

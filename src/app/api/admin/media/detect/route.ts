@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
         categories.map((c) => c.name),
         vehicles.map((v) => `${v.title} (${v.brand} ${v.model} ${v.year})`),
       );
-    } catch {
+    } catch (err) {
+      console.error("[MEDIA_DETECT] Vision classification failed:", err);
       return jsonOk({
         detected: false,
         reason: "The AI vision service is unavailable right now. Assign this file manually.",
