@@ -14,6 +14,8 @@ test("accepts the uploaded JPEG vehicle image and keeps its serving URL reachabl
   assert.equal(mediaTypeFromMime("image/jpeg"), "IMAGE");
   assert.equal(publicMediaUrl("/api/files/vehicles/howo-trucks.jpg"), "/api/files/vehicles/howo-trucks.jpg");
   assert.equal(publicMediaUrl("https://www.cspekmotors.com/api/files/vehicles/howo-trucks.jpg"), "/api/files/vehicles/howo-trucks.jpg");
+  const uploadedCdnUrl = "https://cdn.builder.io/api/v1/image/assets%2Fd90e7320ff704043aeff0f65289577bd%2F6fa5dcc18271442c962131f561c5ad51?format=webp&width=800&height=1200";
+  assert.equal(publicMediaUrl(uploadedCdnUrl), uploadedCdnUrl);
 });
 
 test("rejects unsupported image formats before storage", () => {
