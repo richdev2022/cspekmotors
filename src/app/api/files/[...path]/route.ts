@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { existsSync, statSync, createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
+import { getUploadRoot } from "@/lib/upload-root";
 
 export const runtime = "nodejs";
 
@@ -11,9 +12,7 @@ const MIME_BY_EXT: Record<string, string> = {
   ".pdf": "application/pdf",
 };
 
-const UPLOAD_ROOT = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(process.cwd(), "uploads");
+const UPLOAD_ROOT = getUploadRoot();
 
 /**
  * Serves locally-stored media files: /api/files/<folder>/<filename>
