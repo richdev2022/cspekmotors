@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { publicMediaUrl } from "@/lib/media";
 import type { Paginated, VehicleListParams, VehicleWithRelations } from "@/types";
 
 // ------------------------------------------------------------
@@ -123,7 +124,7 @@ export const categoryMediaOrderBy = [{ isPrimary: "desc" }, { sortOrder: "asc" }
 export function categoryImageOf(
   category: { image?: string | null; media?: { url: string; type: string; isPrimary: boolean }[] },
 ): string | null {
-  if (category.image) return category.image;
+  if (category.image) return publicMediaUrl(category.image);
   const images = (category.media ?? []).filter((m) => m.type === "IMAGE");
-  return images.find((m) => m.isPrimary)?.url ?? images[0]?.url ?? null;
+  return publicMediaUrl(images.find((m) => m.isPrimary)?.url ?? images[0]?.url);
 }

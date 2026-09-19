@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { publicMediaUrl } from "@/lib/media";
 
 export function CategoryCard({
   name, slug, description, image, vehicleCount,
 }: {
   name: string; slug: string; description?: string | null; image?: string | null; vehicleCount: number;
 }) {
+  const imageUrl = publicMediaUrl(image);
+
   return (
     <Link
       href={`/categories/${slug}`}
@@ -13,10 +16,9 @@ export function CategoryCard({
       aria-label={`Browse ${name} — ${vehicleCount} vehicles available`}
     >
       <div className="relative aspect-[16/10] overflow-hidden">
-        {image ? (
-           
+        {imageUrl ? (
           <img
-            src={image}
+            src={imageUrl}
             alt={`${name} available for sale at C-SPEK MOTORS LTD`}
             loading="lazy"
             className="h-full w-full object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
