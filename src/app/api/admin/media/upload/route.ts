@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         // Site asset (logo, sharing image, etc.) — store file only, no DB record
         saved.push({
           id: "", url: result.url, filename: result.filename,
-          type: mediaTypeFromMime(file.type), mimeType: file.type, fileSize: result.size,
+          type: mediaTypeFromMime(result.mimeType), mimeType: result.mimeType, fileSize: result.size,
           caption: null, isPrimary: false, sortOrder: 0, vehicleId: null, createdAt: new Date(),
         });
           continue;
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
           type: mediaTypeFromMime(file.type),
           url: result.url,
           filename: result.filename,
-          mimeType: file.type,
+          mimeType: result.mimeType,
           fileSize: result.size,
           caption: caption || null,
           sortOrder: 99, // new uploads go to the end; admin can reorder

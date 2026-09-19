@@ -113,10 +113,11 @@ Set `NODE_ENV=production`, a strong `JWT_SECRET` and the real `APP_URL`
 
 ---
 
-## How uploads work (no cloud storage)
+## How uploads work
 
-All media uploaded from the admin dashboard is written to the **`uploads/` folder
-inside the project**:
+When `BLOB_READ_WRITE_TOKEN` is configured, media uploaded from the admin dashboard is stored in the connected Vercel Blob store and saved as a public URL. This is the required mode for Vercel deployments.
+
+Without that token, local development and persistent-disk hosts use the **`uploads/` folder inside the project**:
 
 ```
 uploads/
@@ -128,13 +129,11 @@ uploads/
 └── README.txt
 ```
 
-- Files are served back through `GET /api/files/<folder>/<filename>` with HTTP
-  range support (video seeking works).
-- Large images are automatically resized/compressed (max width 1920px).
-- Uploads are served through the app and are not automatically committed to Git.
-  Configure `UPLOAD_DIR` to point to persistent storage in production.
-- Optional: set `UPLOAD_DIR=/absolute/path` in `.env` to store uploads elsewhere.
-  This is required on serverless hosts because their local filesystem is ephemeral.
+- Local files are served through `GET /api/files/<folder>/<filename>` with HTTP
+  range support for video seeking, and are not automatically committed to Git.
+- Images are automatically resized/compressed when appropriate (max width 1920px).
+- Set `UPLOAD_DIR=/absolute/path` for a persistent-disk deployment without Blob storage.
+- On Vercel, add the `BLOB_READ_WRITE_TOKEN` environment variable from the connected Blob store. The app then writes public URLs directly to Vercel Blob.
 
 ---
 
@@ -163,9 +162,7 @@ git push -u origin main
      `/app/uploads` (or set `UPLOAD_DIR` to the volume path) so uploads survive
      redeploys; use their PostgreSQL add-on by changing the Prisma datasource if
      you prefer a managed DB.
-   - **Vercel** — serverless filesystems are read-only, so use it only together
-     with a volume-backed storage or switch the storage module to a cloud bucket
-     later (the storage layer is a single file: `src/lib/storage.ts`).
+   - **Vercel** — connect the Vercel Blob store and add `BLOB_READ_WRITE_TOKEN` to the project environment. Runtime uploads are stored in Blob and remain accessible after redeploys.
 
 ---
 
