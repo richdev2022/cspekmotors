@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Phone } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +27,9 @@ const NAV_LINKS = [
 export function Navbar({ settings }: { settings: NavSettings }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { resolvedTheme } = useTheme();
   const pathname = usePathname();
+  const darkMode = resolvedTheme === "dark";
 
   // Dark artwork (silver) over the dark hero; dark-text artwork on white once scrolled/menu open
   const logoSrc = scrolled || open
@@ -44,7 +48,9 @@ export function Navbar({ settings }: { settings: NavSettings }) {
       className={cn(
         "fixed top-0 inset-x-0 z-50 transition-all duration-300",
         scrolled || open
-          ? "bg-white/95 backdrop-blur-md border-b border-zinc-200 shadow-[0_1px_20px_rgba(0,0,0,0.06)]"
+          ? darkMode
+            ? "bg-zinc-950/95 backdrop-blur-md border-b border-white/10"
+            : "bg-white/95 backdrop-blur-md border-b border-zinc-200 shadow-[0_1px_20px_rgba(0,0,0,0.06)]"
           : "bg-zinc-950 border-b border-white/5"
       )}
     >
@@ -67,9 +73,13 @@ export function Navbar({ settings }: { settings: NavSettings }) {
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-medium transition-colors",
                     scrolled
-                      ? active
-                        ? "bg-zinc-950 text-white"
-                        : "text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100"
+                      ? darkMode
+                        ? active
+                          ? "bg-amber-500 text-zinc-950"
+                          : "text-zinc-300 hover:text-white hover:bg-white/10"
+                        : active
+                          ? "bg-zinc-950 text-white"
+                          : "text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100"
                       : active
                         ? "bg-white text-zinc-950"
                         : "text-white/85 hover:text-white hover:bg-white/10"
@@ -94,6 +104,7 @@ export function Navbar({ settings }: { settings: NavSettings }) {
                 <span className="hidden xl:inline">{settings.phone}</span>
               </a>
             )}
+            <ThemeToggle className={cn("text-white", (scrolled || open) && !darkMode && "text-zinc-900")} />
             <Button asChild className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold rounded-full">
               <Link href="/vehicles">Explore Vehicles</Link>
             </Button>
@@ -134,6 +145,10 @@ export function Navbar({ settings }: { settings: NavSettings }) {
                 </Link>
               );
             })}
+            <div className="flex items-center justify-between border-t border-zinc-200 pt-3">
+              <span className="text-sm font-medium text-zinc-600">Appearance</span>
+              <ThemeToggle className="text-zinc-900" />
+            </div>
             <div className="pt-3 flex flex-col gap-2">
               {settings.phone && (
                 <Button asChild variant="outline" className="rounded-full h-12">

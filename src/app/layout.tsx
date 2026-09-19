@@ -86,7 +86,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <AutoDealerJsonLd />
           {children}
           <Toaster position="top-right" richColors closeButton />

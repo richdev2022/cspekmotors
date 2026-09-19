@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Car, Shapes, Images, MessagesSquare, Inbox, Settings, Users, ScrollText,
   LogOut, Menu, ExternalLink, ChevronsUpDown,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -101,7 +102,7 @@ export function AdminShell({ admin, children }: { admin: SafeAdmin; children: Re
   );
 
   return (
-    <div className="flex min-h-screen bg-zinc-100">
+    <div className="admin-shell flex min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-950 lg:block" aria-label="Admin sidebar">
         {navContent}
@@ -117,7 +118,7 @@ export function AdminShell({ admin, children }: { admin: SafeAdmin; children: Re
 
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/90 px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-3">
             <Sheet>
               <SheetTrigger asChild>
@@ -130,10 +131,11 @@ export function AdminShell({ admin, children }: { admin: SafeAdmin; children: Re
                 {navContent}
               </SheetContent>
             </Sheet>
-            <p className="font-display text-base font-semibold text-zinc-900">Admin Dashboard</p>
+            <p className="font-display text-base font-semibold text-foreground">Admin Dashboard</p>
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button asChild variant="outline" size="sm" className="hidden rounded-full sm:inline-flex">
               <Link href="/admin/vehicles/new">+ Add Vehicle</Link>
             </Button>
