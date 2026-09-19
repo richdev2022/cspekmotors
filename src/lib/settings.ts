@@ -31,16 +31,32 @@ export const DEFAULT_SETTINGS_VALUES = {
 
 /** Fetches the single settings row, creating defaults on first access. */
 export async function getSiteSettings(): Promise<SiteSettings> {
-  const existing = await db.siteSettings.findUnique({ where: { id: "main" } });
-  if (existing) return existing;
   try {
-    return await db.siteSettings.create({ data: { ...DEFAULT_SETTINGS_VALUES, id: "main" } });
+    const existing = await db.siteSettings.findUnique({ where: { id: "main" } });
+    if (existing) return existing;
+    try {
+      return await db.siteSettings.create({ data: { ...DEFAULT_SETTINGS_VALUES, id: "main" } });
+    } catch {
+      const created = await db.siteSettings.findUnique({ where: { id: "main" } });
+      if (created) return created;
+    }
   } catch {
-    // Race-safe: another request may have created it first
-    const created = await db.siteSettings.findUnique({ where: { id: "main" } });
-    if (!created) throw new Error("Unable to load site settings.");
-    return created;
+    // Public pages should remain readable while the database is unavailable.
   }
+
+  return {
+    ...DEFAULT_SETTINGS_VALUES,
+    logo: null,
+    phoneSecondary: DEFAULT_SETTINGS_VALUES.phoneSecondary,
+    facebook: null,
+    instagram: null,
+    tiktok: null,
+    twitter: null,
+    youtube: null,
+    seoDefaultTitle: null,
+    seoDefaultDescription: null,
+    updatedAt: new Date(),
+  } as SiteSettings;
 }
 
 export function parseBusinessHours(json?: string | null): BusinessHourRow[] {

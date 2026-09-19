@@ -11,7 +11,9 @@ const MIME_BY_EXT: Record<string, string> = {
   ".pdf": "application/pdf",
 };
 
-const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+const UPLOAD_ROOT = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(process.cwd(), "uploads");
 
 /**
  * Serves locally-stored media files: /api/files/<folder>/<filename>

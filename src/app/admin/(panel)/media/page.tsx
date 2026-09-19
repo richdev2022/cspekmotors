@@ -224,6 +224,11 @@ interface WizardFile {
   detected: boolean;
   confidence?: number;
   description?: string;
+  brand?: string | null;
+  model?: string | null;
+  detectedName?: string | null;
+  vehicleTitle?: string;
+  matchConfidence?: number;
   reason?: string;
   target: string; // "category:<id>" | "vehicle:<id>" | ""
   error?: string;
@@ -233,6 +238,13 @@ interface DetectResult {
   detected: boolean;
   categoryId?: string;
   categoryName?: string;
+  vehicleId?: string;
+  vehicleTitle?: string;
+  matchConfidence?: number;
+  brand?: string | null;
+  model?: string | null;
+  name?: string | null;
+  year?: number | null;
   confidence?: number;
   description?: string;
   reason?: string;
@@ -369,8 +381,17 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
           detected: true,
           confidence: res.data.confidence,
           description: res.data.description,
+          brand: res.data.brand,
+          model: res.data.model,
+          detectedName: res.data.name,
+          vehicleTitle: res.data.vehicleTitle,
+          matchConfidence: res.data.matchConfidence,
           reason: undefined,
-          target: res.data.categoryId ? `category:${res.data.categoryId}` : "",
+          target: res.data.vehicleId
+            ? `vehicle:${res.data.vehicleId}`
+            : res.data.categoryId
+              ? `category:${res.data.categoryId}`
+              : "",
         });
       }
     }
@@ -534,8 +555,8 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
           {files.length > 0 && unassignedCount > 0
             ? `${unassignedCount} file(s) still need a destination.`
             : files.length > 0
-              ? "All set — review the assignments above and upload."
-              : "AI suggests a category per file. Category uploads show on the public category page — pick a vehicle to show them on its post."}
+              ? "All set — review the assignments above and upload. Similar files are suggested for the same vehicle post when a match is found."
+              : "AI identifies the vehicle when possible, groups matching photos and videos under its post, and falls back to a category for review."}
         </p>
         <Button
           onClick={handleUploadAll}
@@ -591,9 +612,16 @@ function WizardFileRow({
             <Loader2 className="h-3 w-3 animate-spin" /> AI is looking at this file…
           </p>
         )}
+        {wf.detected && (wf.vehicleTitle || wf.brand || wf.model) && (
+          <p className="truncate text-xs font-medium text-emerald-700" title={wf.vehicleTitle || wf.detectedName || undefined}>
+            <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" />
+            {wf.vehicleTitle ? `Likely ${wf.vehicleTitle}` : [wf.brand, wf.model, wf.detectedName].filter(Boolean).join(" ")}
+            {wf.matchConfidence ? ` (${Math.round(wf.matchConfidence * 100)}% match)` : ""}
+          </p>
+        )}
         {wf.detected && wf.description && (
           <p className="truncate text-xs text-zinc-500" title={wf.description}>
-            <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" />{wf.description}
+            {wf.description}
           </p>
         )}
         {!wf.detected && wf.reason && (wf.status === "ready" || wf.status === "error") && (

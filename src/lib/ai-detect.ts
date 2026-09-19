@@ -11,11 +11,12 @@ import { tmpdir } from "os";
 import path from "path";
 
 export interface DetectedCategory {
-  /** AI's raw category guess, e.g. "SUVs" */
   category: string;
-  /** 0..1 */
+  brand: string | null;
+  model: string | null;
+  name: string | null;
+  year: number | null;
   confidence: number;
-  /** One-sentence description of what the model saw */
   description: string;
 }
 
@@ -105,10 +106,14 @@ function parseModelJson(raw: string): DetectedCategory | null {
   try {
     const obj = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
     const category = typeof obj.category === "string" ? obj.category.trim() : "";
+    const brand = typeof obj.brand === "string" && obj.brand.trim() ? obj.brand.trim() : null;
+    const model = typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : null;
+    const name = typeof obj.name === "string" && obj.name.trim() ? obj.name.trim() : null;
+    const year = typeof obj.year === "number" && obj.year >= 1900 && obj.year <= new Date().getFullYear() + 1 ? Math.round(obj.year) : null;
     const confidence = typeof obj.confidence === "number" ? Math.min(1, Math.max(0, obj.confidence)) : 0.5;
     const description = typeof obj.description === "string" ? obj.description.trim() : "";
     if (!category) return null;
-    return { category, confidence, description };
+    return { category, brand, model, name, year, confidence, description };
   } catch {
     return null;
   }
@@ -132,7 +137,8 @@ export async function classifyVehicleMedia(
     `Pick the ONE best-fitting vehicle category for the main vehicle shown, strictly from this list: ${categoryNames.join(", ")}.`,
     'If the media shows a vehicle that fits none of the specific categories, choose "Other Vehicles".',
     'If no vehicle at all is clearly visible, choose "Other Vehicles" and set confidence to 0.1.',
-    'Respond ONLY with a JSON object in this exact shape: {"category":"<name from the list>","confidence":<0-1>,"description":"<one short sentence describing what is shown>"}',
+    'Identify the visible vehicle when possible. Use null for unknown brand, model, name, or year; never guess a precise identity from an unclear image.',
+    'Respond ONLY with a JSON object in this exact shape: {"category":"<name from the list>","brand":"<make or null>","model":"<model or null>","name":"<full vehicle name or null>","year":<number or null>,"confidence":<0-1>,"description":"<one short sentence describing what is shown>"}',
   ].join("\n");
 
   const res = await zai.chat.completions.createVision({
@@ -212,4 +218,28 @@ export function matchCategoryToDb(
   }
 
   return null;
+}
+
+export function matchDetectedVehicle(
+  detection: Pick<DetectedCategory, "brand" | "model" | "name" | "year">,
+  vehicles: { id: string; title: string; brand: string; model: string; year: number }[],
+): { id: string; title: string; confidence: number } | null {
+  const brand = normalize(detection.brand ?? "");
+  const model = normalize(detection.model ?? "");
+  const name = normalize(detection.name ?? "");
+  if (!brand && !model && !name) return null;
+
+  let best: { id: string; title: string; confidence: number } | null = null;
+  for (const vehicle of vehicles) {
+    const vehicleBrand = normalize(vehicle.brand);
+    const vehicleModel = normalize(vehicle.model);
+    const vehicleTitle = normalize(vehicle.title);
+    const brandMatch = Boolean(brand && (vehicleBrand === brand || vehicleTitle.includes(brand)));
+    const modelMatch = Boolean(model && (vehicleModel === model || vehicleTitle.includes(model)));
+    const nameMatch = Boolean(name && (vehicleTitle.includes(name) || name.includes(vehicleTitle)));
+    const yearMatch = detection.year == null || detection.year === vehicle.year;
+    const confidence = nameMatch && yearMatch ? 1 : brandMatch && modelMatch && yearMatch ? 0.92 : brandMatch && modelMatch ? 0.78 : 0;
+    if (confidence > (best?.confidence ?? 0)) best = { id: vehicle.id, title: vehicle.title, confidence };
+  }
+  return best;
 }

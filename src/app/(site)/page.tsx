@@ -22,7 +22,7 @@ export default async function HomePage() {
       include: { category: true, media: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }, { createdAt: "asc" }] } },
       orderBy: { createdAt: "desc" },
       take: 6,
-    }),
+    }).catch(() => []),
     db.category.findMany({
       where: { isActive: true },
       include: {
@@ -30,7 +30,7 @@ export default async function HomePage() {
         media: { orderBy: [...categoryMediaOrderBy] },
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    }),
+    }).catch(() => []),
   ]);
   const s = toPublicSettings(settings);
   const whatsappUrl = generateWhatsAppGeneralLink(s.whatsapp);
