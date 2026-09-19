@@ -18,6 +18,7 @@
 import { mkdirSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { getUploadRoot } from "@/lib/upload-root";
 
 export interface StorageUpload {
   buffer: Buffer;
@@ -96,9 +97,7 @@ async function optimizeImage(buffer: Buffer): Promise<{ buffer: Buffer; ext: str
 // Local provider — writes to <project>/uploads, served by /api/files/*
 // Override the location with UPLOAD_DIR if you ever need to.
 // ------------------------------------------------------------
-const UPLOAD_ROOT = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(process.cwd(), "uploads");
+const UPLOAD_ROOT = getUploadRoot();
 
 const localProvider: StorageProvider = {
   name: "local",
