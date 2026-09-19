@@ -5,6 +5,7 @@ import { assertSameOrigin, handleApiError, jsonError, jsonOk } from "@/lib/api-u
 import { categoryCreateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/format";
 import { logAudit } from "@/lib/audit";
+import { publicMediaUrl } from "@/lib/media";
 
 export const runtime = "nodejs";
 
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         name: d.name,
         slug,
         description: d.description || null,
-        image: d.image ? new URL(d.image, req.nextUrl.origin).toString() : null,
+        image: publicMediaUrl(d.image),
         video: d.video || null,
         isActive: d.isActive,
         sortOrder: d.sortOrder,

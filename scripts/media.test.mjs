@@ -11,7 +11,8 @@ test("accepts the uploaded JPEG vehicle image and keeps its serving URL reachabl
 
   assert.equal(validation.ok, true);
   assert.equal(mediaTypeFromMime("image/jpeg"), "IMAGE");
-  assert.equal(publicMediaUrl("/api/files/vehicles/howo-trucks.jpg"), "http://localhost:3000/api/files/vehicles/howo-trucks.jpg");
+  assert.equal(publicMediaUrl("/api/files/vehicles/howo-trucks.jpg"), "/api/files/vehicles/howo-trucks.jpg");
+  assert.equal(publicMediaUrl("https://www.cspekmotors.com/api/files/vehicles/howo-trucks.jpg"), "/api/files/vehicles/howo-trucks.jpg");
 });
 
 test("rejects unsupported image formats before storage", () => {

@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { publicMediaUrl } from "@/lib/media";
 
 interface CategoryRow {
   id: string; name: string; slug: string; description: string | null; image: string | null;
@@ -198,7 +199,7 @@ export default function AdminCategoriesPage() {
               <div className="relative aspect-[16/8] bg-zinc-100">
                 {c.image ? (
                    
-                  <img src={c.image} alt={c.name} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={publicMediaUrl(c.image) ?? undefined} alt={c.name} className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-zinc-300"><Shapes className="h-8 w-8" /></div>
                 )}
