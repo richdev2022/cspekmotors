@@ -55,6 +55,7 @@ export async function PUT(req: NextRequest) {
         ...(d.seoDefaultTitle !== undefined && { seoDefaultTitle: d.seoDefaultTitle || null }),
         ...(d.seoDefaultDescription !== undefined && { seoDefaultDescription: d.seoDefaultDescription || null }),
         ...(d.socialSharingImage !== undefined && { socialSharingImage: d.socialSharingImage || null }),
+        ...(d.heroImage !== undefined && { heroImage: d.heroImage || null }),
       },
     });
 

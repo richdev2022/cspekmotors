@@ -42,6 +42,7 @@ export interface PublicSettings {
   websiteTitle: string;
   websiteDescription: string;
   socialSharingImage: string | null;
+  heroImage: string | null;
 }
 
 export function toPublicSettings(s: SiteSettings): PublicSettings {
@@ -66,6 +67,7 @@ export function toPublicSettings(s: SiteSettings): PublicSettings {
     websiteTitle: s.websiteTitle,
     websiteDescription: s.websiteDescription,
     socialSharingImage: s.socialSharingImage,
+    heroImage: s.heroImage,
   };
 }
 
