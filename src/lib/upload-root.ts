@@ -1,4 +1,5 @@
 import os from "node:os";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 export function getUploadRoot(): string {
@@ -9,5 +10,9 @@ export function getUploadRoot(): string {
     || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
     || cwd.startsWith("/var/task");
 
-  return isServerless ? path.join(os.tmpdir(), "cspek-uploads") : path.join(cwd, "uploads");
+  if (isServerless) return path.join(os.tmpdir(), "cspek-uploads");
+
+  const projectUploads = path.join(cwd, "uploads");
+  const standaloneUploads = path.join(cwd, ".next", "standalone", "uploads");
+  return existsSync(projectUploads) ? projectUploads : standaloneUploads;
 }
