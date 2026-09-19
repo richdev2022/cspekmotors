@@ -320,7 +320,7 @@ function useDestinationOptions(enabled: boolean) {
 
 function UploadDialog({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<UploadMode>("wizard");
+  const [mode, setMode] = useState<UploadMode>("manual");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -338,7 +338,16 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
         </DialogHeader>
         <Tabs value={mode} onValueChange={(v) => setMode(v as UploadMode)}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="wizard" className="gap-1.5"><Wand2 className="h-4 w-4" /> Smart Wizard</TabsTrigger>
+            <TabsTrigger
+              value="wizard"
+              className="gap-1.5"
+              onClick={(e) => {
+                e.preventDefault();
+                alert("AI Smart Wizard detection is coming soon.");
+              }}
+            >
+              <Wand2 className="h-4 w-4" /> Smart Wizard
+            </TabsTrigger>
             <TabsTrigger value="manual" className="gap-1.5"><Settings2 className="h-4 w-4" /> Manual</TabsTrigger>
           </TabsList>
           <TabsContent value="wizard" className="mt-4">
@@ -456,8 +465,6 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
     }
     if (accepted.length === 0) return;
     setFiles((prev) => [...prev, ...accepted]);
-    // The wizard reads and categorizes uploads as soon as they arrive.
-    analyzeBatch(accepted);
   }
 
   function removeFile(id: string) {
@@ -576,7 +583,7 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
               disabled={uploading}
               onTarget={(t) => patchFile(wf.id, { target: t, error: undefined })}
               onRemove={() => removeFile(wf.id)}
-              onRetry={() => analyzeBatch([wf])}
+              onRetry={() => alert("AI Smart Wizard detection is coming soon.")}
             />
           ))}
         </ul>
