@@ -128,7 +128,7 @@ export function Navbar({ settings }: { settings: NavSettings }) {
 
       {/* Mobile menu */}
       {open && (
-        <div className="lg:hidden border-t border-zinc-200 bg-white">
+        <div className="lg:hidden border-t border-zinc-200 bg-card">
           <nav className="mx-auto max-w-7xl px-4 py-4 space-y-1" aria-label="Mobile navigation">
             {NAV_LINKS.map((link) => {
               const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -147,7 +147,7 @@ export function Navbar({ settings }: { settings: NavSettings }) {
             })}
             <div className="flex items-center justify-between border-t border-zinc-200 pt-3">
               <span className="text-sm font-medium text-zinc-600">Appearance</span>
-              <ThemeToggle className="text-zinc-900" />
+              <ThemeToggle className="text-foreground" />
             </div>
             <div className="pt-3 flex flex-col gap-2">
               {settings.phone && (
