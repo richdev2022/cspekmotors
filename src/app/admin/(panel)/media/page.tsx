@@ -224,6 +224,11 @@ interface WizardFile {
   detected: boolean;
   confidence?: number;
   description?: string;
+  brand?: string | null;
+  model?: string | null;
+  detectedName?: string | null;
+  vehicleTitle?: string;
+  matchConfidence?: number;
   reason?: string;
   target: string; // "category:<id>" | "vehicle:<id>" | ""
   error?: string;
@@ -233,6 +238,13 @@ interface DetectResult {
   detected: boolean;
   categoryId?: string;
   categoryName?: string;
+  vehicleId?: string;
+  vehicleTitle?: string;
+  matchConfidence?: number;
+  brand?: string | null;
+  model?: string | null;
+  name?: string | null;
+  year?: number | null;
   confidence?: number;
   description?: string;
   reason?: string;
@@ -369,8 +381,17 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
           detected: true,
           confidence: res.data.confidence,
           description: res.data.description,
+          brand: res.data.brand,
+          model: res.data.model,
+          detectedName: res.data.name,
+          vehicleTitle: res.data.vehicleTitle,
+          matchConfidence: res.data.matchConfidence,
           reason: undefined,
-          target: res.data.categoryId ? `category:${res.data.categoryId}` : "",
+          target: res.data.vehicleId
+            ? `vehicle:${res.data.vehicleId}`
+            : res.data.categoryId
+              ? `category:${res.data.categoryId}`
+              : "",
         });
       }
     }
@@ -433,25 +454,34 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
     setUploadProgress(0);
     let ok = 0;
     let failed = 0;
-    for (let i = 0; i < withTarget.length; i++) {
-      const wf = withTarget[i];
-      patchFile(wf.id, { status: "uploading", error: undefined });
+    const groups = Array.from(
+      withTarget.reduce((map, wf) => {
+        const group = map.get(wf.target) ?? [];
+        group.push(wf);
+        map.set(wf.target, group);
+        return map;
+      }, new Map<string, WizardFile[]>()),
+    );
+
+    for (let i = 0; i < groups.length; i++) {
+      const [target, group] = groups[i];
+      group.forEach((wf) => patchFile(wf.id, { status: "uploading", error: undefined }));
       const fd = new FormData();
-      const [kind, id] = wf.target.split(":");
+      const [kind, id] = target.split(":");
       if (kind === "vehicle") fd.set("vehicleId", id);
       else fd.set("categoryId", id);
-      fd.append("files", wf.file);
+      group.forEach((wf) => fd.append("files", wf.file));
       const res = await api.upload("/api/admin/media/upload", fd, (pct) => {
-        setUploadProgress(Math.round(((i + pct / 100) / withTarget.length) * 100));
+        setUploadProgress(Math.round(((i + pct / 100) / groups.length) * 100));
       });
       if (res.ok) {
-        ok += 1;
-        patchFile(wf.id, { status: "done" });
+        ok += group.length;
+        group.forEach((wf) => patchFile(wf.id, { status: "done" }));
       } else {
-        failed += 1;
-        patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." });
+        failed += group.length;
+        group.forEach((wf) => patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." }));
       }
-      setUploadProgress(Math.round(((i + 1) / withTarget.length) * 100));
+      setUploadProgress(Math.round(((i + 1) / groups.length) * 100));
     }
     setUploading(false);
     onDone();
@@ -534,8 +564,8 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
           {files.length > 0 && unassignedCount > 0
             ? `${unassignedCount} file(s) still need a destination.`
             : files.length > 0
-              ? "All set — review the assignments above and upload."
-              : "AI suggests a category per file. Category uploads show on the public category page — pick a vehicle to show them on its post."}
+              ? "All set — review the assignments above and upload. Similar files are suggested for the same vehicle post when a match is found."
+              : "AI identifies the vehicle when possible, groups matching photos and videos under its post, and falls back to a category for review."}
         </p>
         <Button
           onClick={handleUploadAll}
@@ -591,9 +621,16 @@ function WizardFileRow({
             <Loader2 className="h-3 w-3 animate-spin" /> AI is looking at this file…
           </p>
         )}
+        {wf.detected && (wf.vehicleTitle || wf.brand || wf.model) && (
+          <p className="truncate text-xs font-medium text-emerald-700" title={wf.vehicleTitle || wf.detectedName || undefined}>
+            <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" />
+            {wf.vehicleTitle ? `Likely ${wf.vehicleTitle}` : [wf.brand, wf.model, wf.detectedName].filter(Boolean).join(" ")}
+            {wf.matchConfidence ? ` (${Math.round(wf.matchConfidence * 100)}% match)` : ""}
+          </p>
+        )}
         {wf.detected && wf.description && (
           <p className="truncate text-xs text-zinc-500" title={wf.description}>
-            <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" />{wf.description}
+            {wf.description}
           </p>
         )}
         {!wf.detected && wf.reason && (wf.status === "ready" || wf.status === "error") && (
