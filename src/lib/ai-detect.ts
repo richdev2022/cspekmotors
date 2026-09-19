@@ -20,6 +20,13 @@ export interface DetectedCategory {
   description: string;
 }
 
+export class VisionNotConfiguredError extends Error {
+  constructor() {
+    super("AI auto-detection is not configured on this server. Set AI_VISION_API_KEY and optionally AI_VISION_BASE_URL and AI_VISION_MODEL, then restart the app. Until then, assign categories manually.");
+    this.name = "VisionNotConfiguredError";
+  }
+}
+
 interface ZaiMessagePart {
   type: string;
   text?: string;
@@ -34,25 +41,83 @@ interface ZaiVisionResponse {
   choices?: { message?: { content?: string } }[];
 }
 
-/** Lazily create the ZAI client (config is read from /etc/.z-ai-config). */
-async function getZai() {
-  if (!zaiPromise) {
-    zaiPromise = import("z-ai-web-dev-sdk")
-      .then((mod) => mod.default.create())
-      .catch((err) => {
-        zaiPromise = null;
-        throw err;
-      });
+interface VisionClient {
+  name: string;
+  classify(dataUrl: string, prompt: string): Promise<string>;
+}
+
+let zaiClient: VisionClient | null | undefined;
+
+async function getZaiClient(): Promise<VisionClient | null> {
+  if (zaiClient !== undefined) return zaiClient;
+  try {
+    const mod = await import("z-ai-web-dev-sdk");
+    const zai = (await mod.default.create()) as {
+      chat: { completions: { createVision(body: unknown): Promise<ZaiVisionResponse> } };
+    };
+    zaiClient = {
+      name: "zai-sdk",
+      async classify(dataUrl, prompt) {
+        const res = await zai.chat.completions.createVision({
+          messages: [{ role: "user", content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ] as ZaiMessagePart[] }],
+          thinking: { type: "disabled" },
+        });
+        return res?.choices?.[0]?.message?.content ?? "";
+      },
+    };
+  } catch {
+    zaiClient = null;
   }
-  return zaiPromise;
+  return zaiClient;
+}
+
+export function openAiVisionConfig(): { baseUrl: string; apiKey: string; model: string } | null {
+  const apiKey = process.env.AI_VISION_API_KEY?.trim();
+  if (!apiKey) return null;
+  return {
+    baseUrl: (process.env.AI_VISION_BASE_URL?.trim() || "https://api.openai.com/v1").replace(/\/+$/, ""),
+    apiKey,
+    model: process.env.AI_VISION_MODEL?.trim() || "gpt-4o-mini",
+  };
+}
+
+async function classifyViaOpenAiCompatible(
+  cfg: { baseUrl: string; apiKey: string; model: string },
+  dataUrl: string,
+  prompt: string,
+): Promise<string> {
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+    body: JSON.stringify({
+      model: cfg.model,
+      max_tokens: 300,
+      messages: [{ role: "user", content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: dataUrl } },
+      ] }],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 180);
+    throw new Error(`Vision API returned ${res.status}${detail ? `: ${detail}` : ""}`);
+  }
+  const json = (await res.json()) as ZaiVisionResponse;
+  return json?.choices?.[0]?.message?.content ?? "";
 }
 
 // ------------------------------------------------------------
 // Video frame extraction (ffmpeg)
 // ------------------------------------------------------------
+const FFMPEG_BIN = () => process.env.FFMPEG_PATH?.trim() || "ffmpeg";
+
 function runFfmpeg(args: string[], timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
+    const child = spawn(FFMPEG_BIN(), args, { stdio: ["ignore", "ignore", "ignore"] });
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       reject(new Error("ffmpeg timed out"));
@@ -88,7 +153,10 @@ export async function extractVideoFrame(buffer: Buffer): Promise<Buffer | null> 
         await runFfmpeg(["-y", "-i", src, ...seekArgs, "-vframes", "1", "-q:v", "3", out]);
         const frame = await readFile(out).catch(() => null);
         if (frame && frame.length > 0) return frame;
-      } catch {
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+          throw new Error(`ffmpeg was not found on the server (looked for "${FFMPEG_BIN()}"). Install ffmpeg or set FFMPEG_PATH to enable video auto-detection. Assign this file manually for now.`);
+        }
         // try next strategy
       }
     }
@@ -135,8 +203,7 @@ export async function classifyVehicleMedia(
   categoryNames: string[],
   vehicleNames: string[] = [],
 ): Promise<DetectedCategory> {
-  const zai = await getZai();
-  const dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+  const dataUrl = `data:${mimeType || "image/jpeg"};base64,${buffer.toString("base64")}`;
 
   const prompt = [
     "You are classifying media for an automobile dealership inventory.",
@@ -150,25 +217,31 @@ export async function classifyVehicleMedia(
     'Respond ONLY with a JSON object in this exact shape: {"category":"<name from the list>","brand":"<make or null>","model":"<model or null>","name":"<full vehicle name or null>","year":<number or null>,"confidence":<0-1>,"description":"<one short sentence describing what is shown>"}',
   ].join("\n");
 
-  const res = await zai.chat.completions.createVision({
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ] as ZaiMessagePart[],
-      },
-    ],
-    thinking: { type: "disabled" },
-  });
-
-  const content = res?.choices?.[0]?.message?.content ?? "";
-  const parsed = parseModelJson(content);
-  if (!parsed) {
-    throw new Error("The AI returned an unexpected response. Please assign the category manually.");
+  const failures: string[] = [];
+  const zai = await getZaiClient();
+  if (zai) {
+    try {
+      const parsed = parseModelJson(await zai.classify(dataUrl, prompt));
+      if (parsed) return parsed;
+      failures.push("zai-sdk: unexpected response shape");
+    } catch (err) {
+      failures.push(`zai-sdk: ${(err as Error)?.message ?? "failed"}`);
+    }
   }
-  return parsed;
+
+  const cfg = openAiVisionConfig();
+  if (cfg) {
+    try {
+      const parsed = parseModelJson(await classifyViaOpenAiCompatible(cfg, dataUrl, prompt));
+      if (parsed) return parsed;
+      failures.push(`${cfg.model}: unexpected response shape`);
+    } catch (err) {
+      failures.push(`${cfg.model}: ${(err as Error)?.message ?? "failed"}`);
+    }
+  }
+
+  if (!zai && !cfg) throw new VisionNotConfiguredError();
+  throw new Error(`The AI vision service failed (${failures.join("; ")}). Assign this file manually, or check the AI_VISION_* settings on the server.`);
 }
 
 // ------------------------------------------------------------
