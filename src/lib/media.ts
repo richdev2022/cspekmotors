@@ -15,9 +15,7 @@ export const VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 export function publicMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
-
-  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
-  return url.startsWith("/") ? `${appUrl}${url}` : `${appUrl}/${url}`;
+  return url.startsWith("/") ? url : `/${url}`;
 }
 
 function maxMb(kind: "image" | "video"): number {
