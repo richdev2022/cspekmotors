@@ -1,20 +1,9 @@
 // ============================================================
 // C-SPEK MOTORS LTD — Media storage
-// All uploads (admin uploads, enquiry attachments, site assets)
-// are written to the local `uploads/` folder in the project root:
-//
-//   uploads/
-//     vehicles/    <- vehicle photos & videos
-//     categories/  <- category media
-//     enquiries/   <- customer enquiry attachments
-//     site/        <- logos, social sharing image, misc assets
-//     seed/        <- demo images used by the seed script
-//
-// Files are served back through GET /api/files/<folder>/<filename>
-// (with HTTP range support for video seeking). The folder is part
-// of the repository, so anything admins upload is committed along
-// with the code when you push to GitHub and stays available.
+// Vercel Blob is used when BLOB_READ_WRITE_TOKEN is configured. Local
+// filesystem storage remains available for development and persistent hosts.
 // ============================================================
+import { del, put } from "@vercel/blob";
 import { mkdirSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -93,6 +82,24 @@ async function optimizeImage(buffer: Buffer): Promise<{ buffer: Buffer; ext: str
   }
 }
 
+async function prepareUpload({ buffer, filename, mimeType }: StorageUpload): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+  let outBuffer = buffer;
+  let finalName = uniqueFilename(filename);
+  let storedMimeType = mimeType;
+
+  if (mimeType.startsWith("image/")) {
+    const optimized = await optimizeImage(buffer);
+    outBuffer = optimized.buffer;
+    if (optimized.ext) {
+      const ext = path.extname(finalName);
+      finalName = `${path.basename(finalName, ext)}${optimized.ext}`;
+      storedMimeType = "image/jpeg";
+    }
+  }
+
+  return { buffer: outBuffer, filename: finalName, mimeType: storedMimeType };
+}
+
 // ------------------------------------------------------------
 // Local provider — writes to <project>/uploads, served by /api/files/*
 // Override the location with UPLOAD_DIR if you ever need to.
@@ -101,20 +108,9 @@ const UPLOAD_ROOT = getUploadRoot();
 
 const localProvider: StorageProvider = {
   name: "local",
-  async upload({ buffer, filename, mimeType, folder = "misc" }) {
-    const safeFolder = folder.replace(/[^a-z0-9_-]/gi, "") || "misc";
-    let outBuffer = buffer;
-    let finalName = uniqueFilename(filename);
-
-    if (mimeType.startsWith("image/")) {
-      const optimized = await optimizeImage(buffer);
-      outBuffer = optimized.buffer;
-      if (optimized.ext) {
-        const ext = path.extname(finalName);
-        finalName = `${path.basename(finalName, ext)}${optimized.ext}`;
-      }
-    }
-
+  async upload(input) {
+    const { buffer: outBuffer, filename: finalName, mimeType } = await prepareUpload(input);
+    const safeFolder = (input.folder ?? "misc").replace(/[^a-z0-9_-]/gi, "") || "misc";
     const dir = path.join(UPLOAD_ROOT, safeFolder);
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, finalName), outBuffer);
@@ -137,6 +133,44 @@ const localProvider: StorageProvider = {
   },
 };
 
+const blobProvider: StorageProvider = {
+  name: "vercel-blob",
+  async upload(input) {
+    const { buffer, filename, mimeType } = await prepareUpload(input);
+    const safeFolder = (input.folder ?? "misc").replace(/[^a-z0-9_-]/gi, "") || "misc";
+    const blob = await put(`${safeFolder}/${filename}`, buffer, {
+      access: "public",
+      contentType: mimeType,
+      addRandomSuffix: false,
+    });
+
+    return {
+      url: blob.url,
+      filename,
+      size: buffer.length,
+      mimeType,
+    };
+  },
+  async delete(url) {
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.endsWith(".blob.vercel-storage.com")) return;
+      await del(url);
+    } catch {
+      return;
+    }
+  },
+};
+
 export function getStorageProvider(): StorageProvider {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return blobProvider;
+
+  const isServerless = process.env.VERCEL === "1"
+    || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
+    || process.cwd().startsWith("/var/task");
+  if (isServerless) {
+    throw new Error("BLOB_READ_WRITE_TOKEN is required for uploads on serverless deployments.");
+  }
+
   return localProvider;
 }

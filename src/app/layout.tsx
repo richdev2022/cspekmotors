@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { getSiteSettings } from "@/lib/settings";
@@ -85,9 +86,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <AutoDealerJsonLd />
-        {children}
-        <Toaster position="top-right" richColors closeButton />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AutoDealerJsonLd />
+          {children}
+          <Toaster position="top-right" richColors closeButton />
+        </ThemeProvider>
       </body>
     </html>
   );
