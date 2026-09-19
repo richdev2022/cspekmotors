@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         analysisBuffer,
         isVideo ? "image/jpeg" : file.type,
         categories.map((c) => c.name),
+        vehicles.map((v) => `${v.title} (${v.brand} ${v.model} ${v.year})`),
       );
     } catch {
       return jsonOk({

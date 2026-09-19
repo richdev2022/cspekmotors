@@ -454,25 +454,34 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
     setUploadProgress(0);
     let ok = 0;
     let failed = 0;
-    for (let i = 0; i < withTarget.length; i++) {
-      const wf = withTarget[i];
-      patchFile(wf.id, { status: "uploading", error: undefined });
+    const groups = Array.from(
+      withTarget.reduce((map, wf) => {
+        const group = map.get(wf.target) ?? [];
+        group.push(wf);
+        map.set(wf.target, group);
+        return map;
+      }, new Map<string, WizardFile[]>()),
+    );
+
+    for (let i = 0; i < groups.length; i++) {
+      const [target, group] = groups[i];
+      group.forEach((wf) => patchFile(wf.id, { status: "uploading", error: undefined }));
       const fd = new FormData();
-      const [kind, id] = wf.target.split(":");
+      const [kind, id] = target.split(":");
       if (kind === "vehicle") fd.set("vehicleId", id);
       else fd.set("categoryId", id);
-      fd.append("files", wf.file);
+      group.forEach((wf) => fd.append("files", wf.file));
       const res = await api.upload("/api/admin/media/upload", fd, (pct) => {
-        setUploadProgress(Math.round(((i + pct / 100) / withTarget.length) * 100));
+        setUploadProgress(Math.round(((i + pct / 100) / groups.length) * 100));
       });
       if (res.ok) {
-        ok += 1;
-        patchFile(wf.id, { status: "done" });
+        ok += group.length;
+        group.forEach((wf) => patchFile(wf.id, { status: "done" }));
       } else {
-        failed += 1;
-        patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." });
+        failed += group.length;
+        group.forEach((wf) => patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." }));
       }
-      setUploadProgress(Math.round(((i + 1) / withTarget.length) * 100));
+      setUploadProgress(Math.round(((i + 1) / groups.length) * 100));
     }
     setUploading(false);
     onDone();

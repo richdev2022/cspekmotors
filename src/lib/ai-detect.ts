@@ -128,6 +128,7 @@ export async function classifyVehicleMedia(
   buffer: Buffer,
   mimeType: string,
   categoryNames: string[],
+  vehicleNames: string[] = [],
 ): Promise<DetectedCategory> {
   const zai = await getZai();
   const dataUrl = `data:image/jpeg;base64,${buffer.toString("base64")}`;
@@ -138,6 +139,9 @@ export async function classifyVehicleMedia(
     'If the media shows a vehicle that fits none of the specific categories, choose "Other Vehicles".',
     'If no vehicle at all is clearly visible, choose "Other Vehicles" and set confidence to 0.1.',
     'Identify the visible vehicle when possible. Use null for unknown brand, model, name, or year; never guess a precise identity from an unclear image.',
+    vehicleNames.length > 0
+      ? `Existing inventory names are provided for matching only. Do not choose one unless the visible make and model clearly agree: ${vehicleNames.join(" | ")}.`
+      : "There is no existing inventory list; return the best visible identity or null.",
     'Respond ONLY with a JSON object in this exact shape: {"category":"<name from the list>","brand":"<make or null>","model":"<model or null>","name":"<full vehicle name or null>","year":<number or null>,"confidence":<0-1>,"description":"<one short sentence describing what is shown>"}',
   ].join("\n");
 
@@ -229,17 +233,18 @@ export function matchDetectedVehicle(
   const name = normalize(detection.name ?? "");
   if (!brand && !model && !name) return null;
 
-  let best: { id: string; title: string; confidence: number } | null = null;
-  for (const vehicle of vehicles) {
+  const candidates = vehicles.filter((vehicle) => {
     const vehicleBrand = normalize(vehicle.brand);
     const vehicleModel = normalize(vehicle.model);
     const vehicleTitle = normalize(vehicle.title);
-    const brandMatch = Boolean(brand && (vehicleBrand === brand || vehicleTitle.includes(brand)));
-    const modelMatch = Boolean(model && (vehicleModel === model || vehicleTitle.includes(model)));
-    const nameMatch = Boolean(name && (vehicleTitle.includes(name) || name.includes(vehicleTitle)));
-    const yearMatch = detection.year == null || detection.year === vehicle.year;
-    const confidence = nameMatch && yearMatch ? 1 : brandMatch && modelMatch && yearMatch ? 0.92 : brandMatch && modelMatch ? 0.78 : 0;
-    if (confidence > (best?.confidence ?? 0)) best = { id: vehicle.id, title: vehicle.title, confidence };
-  }
-  return best;
+    const exactName = Boolean(name && (vehicleTitle === name || vehicleTitle.includes(name) || name.includes(vehicleTitle)));
+    const exactMakeModel = Boolean(brand && model && vehicleBrand === brand && vehicleModel === model);
+    const yearMatches = detection.year == null || detection.year === vehicle.year;
+    return yearMatches && (exactName || exactMakeModel);
+  });
+
+  if (candidates.length !== 1) return null;
+  const vehicle = candidates[0];
+  const exactName = Boolean(name && normalize(vehicle.title) === name);
+  return { id: vehicle.id, title: vehicle.title, confidence: exactName ? 1 : 0.95 };
 }
