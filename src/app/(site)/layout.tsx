@@ -10,7 +10,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const settings = toPublicSettings(await getSiteSettings());
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="site-shell flex min-h-screen flex-col">
       <Navbar
         settings={{
           companyName: settings.companyName,

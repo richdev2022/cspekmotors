@@ -136,6 +136,22 @@
 }
 
 @layer utilities {
+  .admin-shell .text-zinc-950 { color: var(--foreground); }
+  .admin-shell .text-zinc-900 { color: var(--foreground); }
+  .admin-shell .text-zinc-800 { color: var(--foreground); }
+  .admin-shell .text-zinc-700 { color: var(--muted-foreground); }
+  .admin-shell .bg-white { background-color: var(--card); }
+  .admin-shell .bg-zinc-100 { background-color: var(--background); }
+  .admin-shell .border-zinc-200 { border-color: var(--border); }
+  .admin-shell .border-zinc-300 { border-color: var(--border); }
+  .dark .site-shell .text-zinc-950,
+  .dark .site-shell .text-zinc-900,
+  .dark .site-shell .text-zinc-800 { color: var(--foreground); }
+  .dark .site-shell .text-zinc-700 { color: var(--muted-foreground); }
+  .dark .site-shell .bg-white { background-color: var(--card); }
+  .dark .site-shell .bg-zinc-100 { background-color: var(--background); }
+  .dark .site-shell .border-zinc-200,
+  .dark .site-shell .border-zinc-300 { border-color: var(--border); }
   .font-display {
     font-family: var(--font-space-grotesk), var(--font-inter), sans-serif;
   }

@@ -78,6 +78,8 @@ export function VehicleForm({
   const router = useRouter();
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const pendingFileRef = useRef<HTMLInputElement>(null);
 
   const { data: categories } = useQuery<CategoryOption[]>({
     queryKey: ["admin-categories"],
@@ -134,7 +136,18 @@ export function VehicleForm({
     qc.invalidateQueries({ queryKey: ["admin-vehicles"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
     if (mode === "create") {
-      toast.success("Vehicle created! Now upload photos and videos below.");
+      if (pendingFiles.length > 0) {
+        const mediaForm = new FormData();
+        mediaForm.set("vehicleId", res.data.id);
+        pendingFiles.forEach((file) => mediaForm.append("files", file));
+        const upload = await api.upload<{ count: number }>("/api/admin/media/upload", mediaForm);
+        if (!upload.ok) {
+          toast.error(`Vehicle created, but photos could not be uploaded: ${upload.error ?? "Upload failed."}`);
+        } else {
+          toast.success(`${upload.data?.count ?? pendingFiles.length} file(s) uploaded.`);
+        }
+      }
+      toast.success("Vehicle created successfully.");
       router.push(`/admin/vehicles/${res.data.id}/edit`);
     } else {
       toast.success("Vehicle saved successfully.");
@@ -243,6 +256,49 @@ export function VehicleForm({
               </div>
             </CardContent>
           </Card>
+
+          {mode === "create" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-display text-base">Photos & Videos</CardTitle>
+                <CardDescription>Select media now and it will be uploaded when you create the vehicle.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <input
+                  ref={pendingFileRef}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  onChange={(event) => {
+                    setPendingFiles((current) => [...current, ...Array.from(event.target.files ?? [])]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => pendingFileRef.current?.click()}
+                  className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-8 text-center transition-colors hover:border-amber-400 hover:bg-amber-50"
+                >
+                  <UploadCloud className="h-9 w-9 text-zinc-400" />
+                  <span className="mt-2 text-sm font-semibold text-zinc-700">Choose photos or videos</span>
+                  <span className="mt-1 text-xs text-zinc-400">JPG, PNG, WEBP, MP4, WEBM, MOV</span>
+                </button>
+                {pendingFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {pendingFiles.map((file, index) => (
+                      <div key={`${file.name}-${index}`} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm">
+                        <span className="truncate">{file.name}</span>
+                        <button type="button" onClick={() => setPendingFiles((current) => current.filter((_, i) => i !== index))} className="ml-3 text-zinc-500 hover:text-red-600" aria-label={`Remove ${file.name}`}>
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

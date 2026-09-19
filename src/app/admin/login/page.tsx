@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function AdminLoginPage() {
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +37,8 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-zinc-950 px-4">
+      <div className="absolute right-4 top-4 rounded-full bg-white/10 text-white"> <ThemeToggle /> </div>
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.06]"
         style={{
