@@ -14,9 +14,20 @@ export const VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 
 export function publicMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  if (/^https?:\/\//i.test(url)) return url;
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.pathname.startsWith("/api/files/")) return parsed.pathname;
+    } catch {
+      return null;
+    }
+    return url;
+  }
+
   return url.startsWith("/") ? url : `/${url}`;
 }
+
 
 function maxMb(kind: "image" | "video"): number {
   const fallback = kind === "image" ? 8 : 120;

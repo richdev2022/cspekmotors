@@ -6,6 +6,7 @@ import { categoryUpdateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/format";
 import { logAudit } from "@/lib/audit";
 import { getStorageProvider } from "@/lib/storage";
+import { publicMediaUrl } from "@/lib/media";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         ...(d.name !== undefined && { name: d.name }),
         ...(slug !== existing.slug && { slug }),
         ...(d.description !== undefined && { description: d.description || null }),
-        ...(d.image !== undefined && { image: d.image ? new URL(d.image, req.nextUrl.origin).toString() : null }),
+        ...(d.image !== undefined && { image: publicMediaUrl(d.image) }),
         ...(d.video !== undefined && { video: d.video || null }),
         ...(d.isActive !== undefined && { isActive: d.isActive }),
         ...(d.sortOrder !== undefined && { sortOrder: d.sortOrder }),
