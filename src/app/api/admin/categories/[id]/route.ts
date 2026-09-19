@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         ...(d.name !== undefined && { name: d.name }),
         ...(slug !== existing.slug && { slug }),
         ...(d.description !== undefined && { description: d.description || null }),
-        ...(d.image !== undefined && { image: d.image || null }),
+        ...(d.image !== undefined && { image: d.image ? new URL(d.image, req.nextUrl.origin).toString() : null }),
         ...(d.video !== undefined && { video: d.video || null }),
         ...(d.isActive !== undefined && { isActive: d.isActive }),
         ...(d.sortOrder !== undefined && { sortOrder: d.sortOrder }),

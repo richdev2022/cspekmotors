@@ -123,7 +123,7 @@ export default function AdminCategoriesPage() {
       toast.error(res.error ?? "Image upload failed.");
       return;
     }
-    const url = res.data[0].url;
+    const url = new URL(res.data[0].url, window.location.origin).toString();
     if (editing) {
       const updated = await api.put(`/api/admin/categories/${editing.id}`, { image: url });
       if (updated.ok) {

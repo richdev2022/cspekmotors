@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         name: d.name,
         slug,
         description: d.description || null,
-        image: d.image || null,
+        image: d.image ? new URL(d.image, req.nextUrl.origin).toString() : null,
         video: d.video || null,
         isActive: d.isActive,
         sortOrder: d.sortOrder,
