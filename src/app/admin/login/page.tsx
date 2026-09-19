@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, LockKeyhole, User } from "lucide-react";
+import { Eye, EyeOff, Loader2, LockKeyhole, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { api } from "@/lib/api-client";
 
 export default function AdminLoginPage() {
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,12 +78,20 @@ export default function AdminLoginPage() {
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="h-12 border-white/10 bg-white/5 pl-10 text-white placeholder:text-zinc-500"
+                className="h-12 border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder:text-zinc-500"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <Button
