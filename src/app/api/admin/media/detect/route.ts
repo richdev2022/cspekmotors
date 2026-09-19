@@ -50,7 +50,15 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     let analysisBuffer: Buffer = buffer;
     if (isVideo) {
-      const frame = await extractVideoFrame(buffer);
+      let frame: Buffer | null = null;
+      try {
+        frame = await extractVideoFrame(buffer);
+      } catch (err) {
+        return jsonOk({
+          detected: false,
+          reason: err instanceof Error && err.message ? err.message : "Could not read a frame from this video. Assign it manually.",
+        });
+      }
       if (!frame) {
         return jsonOk({
           detected: false,
@@ -68,10 +76,13 @@ export async function POST(req: NextRequest) {
         categories.map((c) => c.name),
         vehicles.map((v) => `${v.title} (${v.brand} ${v.model} ${v.year})`),
       );
-    } catch {
+    } catch (err) {
+      console.error("[MEDIA_DETECT] Vision classification failed:", err);
       return jsonOk({
         detected: false,
-        reason: "The AI vision service is unavailable right now. Assign this file manually.",
+        reason: err instanceof Error && err.message
+          ? err.message
+          : "The AI vision service is unavailable right now. Assign this file manually.",
       });
     }
 
