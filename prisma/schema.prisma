@@ -198,6 +198,7 @@ model SiteSettings {
   seoDefaultTitle    String?
   seoDefaultDescription String?
   socialSharingImage String?
+  heroImage          String?
   updatedAt          DateTime @updatedAt
 }
 

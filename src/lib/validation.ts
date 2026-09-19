@@ -160,6 +160,7 @@ export const settingsUpdateSchema = z.object({
   seoDefaultTitle: z.string().max(200).nullable().optional(),
   seoDefaultDescription: z.string().max(500).nullable().optional(),
   socialSharingImage: z.string().max(600).nullable().optional(),
+  heroImage: z.string().max(600).nullable().optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

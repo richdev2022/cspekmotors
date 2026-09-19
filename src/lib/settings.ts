@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS_VALUES = {
   logoLight: "/brand/logo-light-bg.png",
   logoDark: "/brand/logo-dark-bg.png",
   socialSharingImage: "/og-image.png",
+  heroImage: null,
   businessHours: JSON.stringify([
     { days: "Monday – Friday", hours: "8:00 AM – 6:00 PM" },
     { days: "Saturday", hours: "9:00 AM – 4:00 PM" },

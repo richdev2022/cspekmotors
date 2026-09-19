@@ -19,7 +19,7 @@ interface SettingsData {
   businessHours: string | null; mapUrl: string | null;
   facebook: string | null; instagram: string | null; tiktok: string | null; twitter: string | null; youtube: string | null;
   websiteTitle: string; websiteDescription: string;
-  seoDefaultTitle: string | null; seoDefaultDescription: string | null; socialSharingImage: string | null;
+  seoDefaultTitle: string | null; seoDefaultDescription: string | null; socialSharingImage: string | null; heroImage: string | null;
 }
 
 interface HourRow { days: string; hours: string }
@@ -61,9 +61,11 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
   const shareRef = useRef<HTMLInputElement>(null);
   const lightLogoRef = useRef<HTMLInputElement>(null);
   const darkLogoRef = useRef<HTMLInputElement>(null);
+  const heroRef = useRef<HTMLInputElement>(null);
   const [uploadingShare, setUploadingShare] = useState(false);
   const [uploadingLightLogo, setUploadingLightLogo] = useState(false);
   const [uploadingDarkLogo, setUploadingDarkLogo] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState(false);
 
   // Initialized once from loaded data — no sync effect needed
   const [form, setForm] = useState<Record<string, string>>(() => ({
@@ -74,6 +76,7 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     websiteTitle: data.websiteTitle, websiteDescription: data.websiteDescription,
     seoDefaultTitle: data.seoDefaultTitle ?? "", seoDefaultDescription: data.seoDefaultDescription ?? "",
     socialSharingImage: data.socialSharingImage ?? "",
+    heroImage: data.heroImage ?? "",
     logoLight: data.logoLight ?? "",
     logoDark: data.logoDark ?? "",
   }));
@@ -97,10 +100,11 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     onError: (e: Error) => toast.error(e.message),
   });
 
-  async function uploadImage(file: File | undefined, purpose: "logoLight" | "logoDark" | "share") {
+  async function uploadImage(file: File | undefined, purpose: "logoLight" | "logoDark" | "share" | "hero") {
     if (!file) return;
     if (purpose === "share") setUploadingShare(true);
     else if (purpose === "logoLight") setUploadingLightLogo(true);
+    else if (purpose === "hero") setUploadingHero(true);
     else setUploadingDarkLogo(true);
 
     const fd = new FormData();
@@ -109,6 +113,7 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
     if (purpose === "share") setUploadingShare(false);
     else if (purpose === "logoLight") setUploadingLightLogo(false);
+    else if (purpose === "hero") setUploadingHero(false);
     else setUploadingDarkLogo(false);
 
     if (!res.ok || !res.data || res.data.length === 0) {
@@ -118,10 +123,11 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     const url = res.data[0].url;
     const field = purpose === "share" ? "socialSharingImage" : purpose;
     setForm((f) => ({ ...f, [field]: url }));
-    // Persist immediately so the whole site picks it up
     const put = await api.put("/api/admin/settings", { [field]: url });
     if (put.ok) {
-      toast.success(purpose === "share" ? "Social sharing image updated." : "Logo updated.");
+      toast.success(
+        purpose === "share" ? "Social sharing image updated." : purpose === "hero" ? "Hero image updated." : "Logo updated."
+      );
       qc.invalidateQueries({ queryKey: ["admin-settings"] });
     } else {
       toast.error(put.error ?? "Could not attach the image.");
@@ -257,7 +263,6 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
               <Field label="Social Sharing Image (Open Graph)">
                 <div className="flex items-center gap-4">
                   {form.socialSharingImage ? (
-                     
                     <img src={form.socialSharingImage} alt="Social sharing" className="h-14 w-24 rounded-lg border border-zinc-200 object-cover" />
                   ) : (
                     <span className="flex h-14 w-24 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-[10px] text-zinc-400">None</span>
@@ -266,6 +271,20 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
                     {uploadingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
                     {uploadingShare ? "Uploading…" : "Upload Image"}
                     <input ref={shareRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], "share")} />
+                  </label>
+                </div>
+              </Field>
+              <Field label="Hero Background Image" hint="Displayed behind the landing page hero copy. Use a wide JPG, PNG or WEBP image.">
+                <div className="flex flex-wrap items-center gap-4">
+                  {form.heroImage ? (
+                    <img src={form.heroImage} alt="Hero background preview" className="h-20 w-36 rounded-lg border border-zinc-200 object-cover" />
+                  ) : (
+                    <span className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-center text-[10px] text-zinc-400">No hero image set</span>
+                  )}
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:border-amber-400">
+                    {uploadingHero ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                    {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
+                    <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], "hero")} />
                   </label>
                 </div>
               </Field>

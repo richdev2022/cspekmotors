@@ -7,23 +7,22 @@ import { generateWhatsAppGeneralLink } from "@/lib/whatsapp";
 export function Hero({
   settings,
 }: {
-  settings: { companyName: string; tagline: string; whatsapp: string | null };
+  settings: { companyName: string; tagline: string; whatsapp: string | null; heroImage: string | null };
 }) {
   const whatsappUrl = generateWhatsAppGeneralLink(settings.whatsapp);
-  // Rotating hero images from seeded media (stored locally)
-  const heroImage = "/api/files/seed/hero-1.jpg";
 
   return (
     <section className="relative flex min-h-[92svh] items-center overflow-hidden bg-zinc-950" aria-label="Welcome">
       {/* Background image with slow zoom */}
       <div className="absolute inset-0" aria-hidden="true">
-        { }
-        <img
-          src={heroImage}
-          alt=""
-          className="hero-zoom h-full w-full object-cover opacity-45"
-          fetchPriority="high"
-        />
+        {settings.heroImage && (
+          <img
+            src={settings.heroImage}
+            alt=""
+            className="hero-zoom h-full w-full object-cover opacity-45"
+            fetchPriority="high"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/80 via-zinc-950/55 to-zinc-950" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/85 via-zinc-950/40 to-transparent" />
       </div>

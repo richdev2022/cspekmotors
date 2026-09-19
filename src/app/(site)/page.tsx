@@ -37,7 +37,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <Hero settings={{ companyName: s.companyName, tagline: s.tagline, whatsapp: s.whatsapp }} />
+      <Hero settings={{ companyName: s.companyName, tagline: s.tagline, whatsapp: s.whatsapp, heroImage: s.heroImage }} />
 
       {/* Why choose us */}
       <section className="border-b border-zinc-100 bg-white py-16" aria-label="Why choose C-SPEK MOTORS">

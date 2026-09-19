@@ -144,12 +144,20 @@
   .admin-shell .bg-zinc-100 { background-color: var(--background); }
   .admin-shell .border-zinc-200 { border-color: var(--border); }
   .admin-shell .border-zinc-300 { border-color: var(--border); }
+  .dark .admin-shell .text-zinc-600,
+  .dark .admin-shell .text-zinc-500 { color: var(--muted-foreground); }
+  .dark .admin-shell .bg-zinc-50 { background-color: var(--background); }
+  .dark .admin-shell .border-zinc-100 { border-color: var(--border); }
   .dark .site-shell .text-zinc-950,
   .dark .site-shell .text-zinc-900,
   .dark .site-shell .text-zinc-800 { color: var(--foreground); }
-  .dark .site-shell .text-zinc-700 { color: var(--muted-foreground); }
-  .dark .site-shell .bg-white { background-color: var(--card); }
+  .dark .site-shell .text-zinc-700,
+  .dark .site-shell .text-zinc-600,
+  .dark .site-shell .text-zinc-500 { color: var(--muted-foreground); }
+  .dark .site-shell .bg-white,
+  .dark .site-shell .bg-zinc-50 { background-color: var(--card); }
   .dark .site-shell .bg-zinc-100 { background-color: var(--background); }
+  .dark .site-shell .border-zinc-100,
   .dark .site-shell .border-zinc-200,
   .dark .site-shell .border-zinc-300 { border-color: var(--border); }
   .font-display {
