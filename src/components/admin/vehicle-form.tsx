@@ -432,14 +432,17 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
 
     setUploading(true);
     setProgress(0);
-    const res = await api.upload<MediaItem[]>("/api/admin/media/upload", fd, setProgress);
+    const res = await api.upload<{ saved: MediaItem[]; failed: { filename: string; error: string }[]; count: number }>("/api/admin/media/upload", fd, setProgress);
     setUploading(false);
 
     if (!res.ok || !res.data) {
       toast.error(res.error ?? "Upload failed.");
       return;
     }
-    toast.success(`${res.data.length} file(s) uploaded.`);
+    toast.success(`${res.data.count} file(s) uploaded.`);
+    if (res.data.failed.length > 0) {
+      toast.error(`${res.data.failed.length} file(s) could not be uploaded.`);
+    }
     qc.invalidateQueries({ queryKey: ["vehicle-media", vehicleId] });
     qc.invalidateQueries({ queryKey: ["admin-media"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
