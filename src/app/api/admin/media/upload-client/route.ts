@@ -23,10 +23,12 @@ export async function POST(req: NextRequest) {
         const category = payload.categoryId
           ? await db.category.findUnique({ where: { id: payload.categoryId }, select: { id: true, name: true } })
           : null;
-        if (!vehicle && !category) throw new Error("A valid vehicle or category is required for video uploads.");
-        if (!/\.(mp4|webm|mov)$/i.test(pathname)) throw new Error("Only MP4, WEBM and MOV videos are supported.");
+        if (!payload.unlinked && !vehicle && !category) throw new Error("A valid vehicle or category is required for video uploads.");
+        const isSiteImage = payload.unlinked === true;
+        if (isSiteImage && !/\.(jpg|jpeg|png|webp)$/i.test(pathname)) throw new Error("Only JPG, PNG and WEBP images are supported.");
+        if (!isSiteImage && !/\.(mp4|webm|mov)$/i.test(pathname)) throw new Error("Only MP4, WEBM and MOV videos are supported.");
         return {
-          allowedContentTypes: ["video/mp4", "video/webm", "video/quicktime"],
+          allowedContentTypes: isSiteImage ? ["image/jpeg", "image/png", "image/webp"] : ["video/mp4", "video/webm", "video/quicktime"],
           maximumSizeInBytes: 200 * 1024 * 1024,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ ...payload, adminId: admin.id, adminName: admin.name, vehicleTitle: vehicle?.title ?? category?.name }),
@@ -35,6 +37,10 @@ export async function POST(req: NextRequest) {
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         const payload = parsePayload(tokenPayload);
         const filename = blob.pathname.split("/").pop() || blob.pathname;
+        if (payload.unlinked) {
+          await logAudit({ adminId: payload.adminId ?? admin.id, adminName: payload.adminName ?? admin.name, action: "UPLOAD", resource: "SETTINGS", resourceId: "site-assets", details: `Uploaded ${payload.purpose ?? "site"} image` });
+          return;
+        }
         await db.media.create({
           data: {
             vehicleId: payload.vehicleId ?? null,
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
           adminName: payload.adminName ?? "Admin",
           action: "UPLOAD",
           resource: "MEDIA",
-          resourceId: payload.vehicleId,
+          resourceId: payload.vehicleId ?? payload.categoryId ?? "media-assets",
           details: `Uploaded video for ${payload.vehicleTitle}`,
         });
       },
@@ -64,9 +70,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function parsePayload(value: string | null | undefined): { vehicleId?: string; categoryId?: string; fileSize?: number; fileType?: string; adminId?: string; adminName?: string; vehicleTitle?: string } {
+function parsePayload(value: string | null | undefined): { vehicleId?: string; categoryId?: string; purpose?: string; unlinked?: boolean; fileSize?: number; fileType?: string; adminId?: string; adminName?: string; vehicleTitle?: string } {
   const payload = value ? JSON.parse(value) : null;
-  if (!payload || (typeof payload.vehicleId !== "string" && typeof payload.categoryId !== "string")) {
+  if (!payload || (!payload.unlinked && typeof payload.vehicleId !== "string" && typeof payload.categoryId !== "string")) {
     throw new Error("A vehicle or category is required for video uploads.");
   }
   return payload;
