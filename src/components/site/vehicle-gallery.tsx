@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X, Play, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { publicMediaUrl } from "@/lib/media";
 import { createPortal } from "react-dom";
 
 export interface GalleryMedia {
@@ -23,9 +24,11 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
   const showImages = filter !== "videos";
   const showVideos = filter !== "images";
   const current = images[activeIndex];
+  const currentUrl = publicMediaUrl(current?.url) ?? current?.url;
+  const imageCount = images.length;
 
-  const next = useCallback(() => setActiveIndex((i) => (i + 1) % Math.max(1, images.length)), [images.length]);
-  const prev = useCallback(() => setActiveIndex((i) => (i - 1 + images.length) % Math.max(1, images.length)), [images.length]);
+  const next = useCallback(() => setActiveIndex((i) => (i + 1) % Math.max(1, imageCount)), [imageCount]);
+  const prev = useCallback(() => setActiveIndex((i) => (i - 1 + imageCount) % Math.max(1, imageCount)), [imageCount]);
 
   // Lightbox keyboard navigation
   useEffect(() => {
@@ -54,7 +57,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
 
   return (
     <div className="space-y-3">
-      {images.length > 0 && videos.length > 0 && (
+      {(images.length > 0 || videos.length > 0) && (
         <div className="flex w-full gap-2 overflow-x-auto rounded-xl bg-zinc-100 p-1" role="tablist" aria-label="Post media filter">
           {(["all", "images", "videos"] as const).map((value) => (
             <button
@@ -75,7 +78,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
       )}
 
       {showImages && images.length > 0 && <div
-        className="relative aspect-[16/10] w-full cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-100"
+        className="relative aspect-[4/3] max-h-[70vh] w-full cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-100 sm:aspect-[16/10]"
         onClick={() => current && setLightboxOpen(true)}
         onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
         onTouchEnd={(e) => {
@@ -93,9 +96,9 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
         {current ? (
           <>
             <img
-              src={current.url}
+              src={currentUrl}
               alt={current.caption || `${title} — photo ${activeIndex + 1}`}
-              className="h-full w-full object-contain p-2 sm:p-4"
+              className="h-full w-full object-contain p-1 sm:p-4"
             />
             {images.length > 1 && (
               <>
@@ -138,7 +141,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
               )}
             >
               { }
-              <img src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <img src={publicMediaUrl(m.url) ?? m.url} alt="" className="h-full w-full object-cover" loading="lazy" />
             </button>
           ))}
         </div>
@@ -148,7 +151,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
       {showVideos && videos.length > 0 && (
         <div className="space-y-3">
           {videos.map((v) => (
-            <LazyVideo key={v.id} src={v.url} caption={v.caption} title={title} />
+            <LazyVideo key={v.id} src={publicMediaUrl(v.url) ?? v.url} caption={v.caption} title={title} />
           ))}
         </div>
       )}
@@ -180,7 +183,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
             <figure className="max-h-[85vh] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
               { }
               <img
-                src={current.url}
+                src={currentUrl}
                 alt={current.caption || `${title} — image ${activeIndex + 1}`}
                 className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
               />

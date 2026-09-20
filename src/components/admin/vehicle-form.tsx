@@ -525,6 +525,7 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
     setProgress(0);
     const directVideos: File[] = [];
     const fallbackFiles: File[] = [];
+    const directUploadErrors: string[] = [];
 
     for (const file of list) {
       if (mediaKindFromFile(file) !== "video") {
@@ -540,8 +541,9 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
           onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
         });
         directVideos.push(file);
-      } catch {
+      } catch (error) {
         fallbackFiles.push(file);
+        directUploadErrors.push(`${file.name}: ${error instanceof Error ? error.message : "direct upload unavailable"}`);
       }
     }
 
@@ -553,7 +555,8 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
       const res = await api.upload<{ saved: MediaItem[]; failed: { filename: string; error: string }[]; count: number }>("/api/admin/media/upload", fd, setProgress);
       if (!res.ok || !res.data) {
         setUploading(false);
-        toast.error(res.error ?? "Upload failed.");
+        const directError = directUploadErrors.length > 0 ? ` Direct upload: ${directUploadErrors.join("; ")}` : "";
+        toast.error(`${res.error ?? "Upload failed."}${directError}`);
         return;
       }
       uploadedCount += res.data.count;
