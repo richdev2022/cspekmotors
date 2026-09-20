@@ -1,6 +1,6 @@
 // ============================================================
 // C-SPEK MOTORS LTD — Prisma Schema
-// SQLite datasource for local development; production can use a PostgreSQL schema branch.
+// PostgreSQL datasource for local and production deployments.
 // Status fields use String + Zod validation for application-level portability.
 // ============================================================
 
@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
