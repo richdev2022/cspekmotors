@@ -56,7 +56,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
       {(images.length > 0 || videos.length > 0) && (
         <div className="flex w-full gap-2 overflow-x-auto rounded-xl bg-zinc-100 p-1" role="tablist" aria-label="Post media filter">
           {(["all", "images", "videos"] as const).map((value) => (
@@ -78,7 +78,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
       )}
 
       {showImages && images.length > 0 && <div
-        className="relative h-[220px] w-full cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-100 sm:aspect-[4/3] sm:h-auto sm:max-h-[70vh] lg:aspect-[16/10]"
+        className="relative h-[min(58vw,220px)] min-w-0 max-w-full cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-100 sm:aspect-[4/3] sm:h-auto sm:max-h-[70vh] lg:aspect-[16/10]"
         onClick={() => current && setLightboxOpen(true)}
         onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
         onTouchEnd={(e) => {
@@ -212,7 +212,7 @@ function LazyVideo({ src, caption, title }: { src: string; caption?: string | nu
     return (
       <button
         onClick={() => setPlaying(true)}
-        className="group relative flex h-[210px] w-full items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 sm:aspect-[16/9] sm:h-auto"
+        className="group relative flex h-[min(56vw,210px)] min-w-0 max-w-full items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 sm:aspect-[16/9] sm:h-auto"
         aria-label={`Play video of ${title}`}
       >
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-zinc-950 shadow-lg transition-transform group-hover:scale-110">
@@ -233,7 +233,7 @@ function LazyVideo({ src, caption, title }: { src: string; caption?: string | nu
         autoPlay
         preload="metadata"
         playsInline
-        className="h-[210px] w-full rounded-2xl bg-zinc-950 sm:aspect-[16/9] sm:h-auto"
+        className="h-[min(56vw,210px)] w-full max-w-full rounded-2xl bg-zinc-950 sm:aspect-[16/9] sm:h-auto"
         aria-label={`${title} video`}
       >
         <source src={src} />

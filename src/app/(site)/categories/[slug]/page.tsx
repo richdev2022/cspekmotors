@@ -44,8 +44,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** Gallery strip for media uploaded at the category level (wizard/manual uploads). */
-function CategoryGallery({ name, media }: { name: string; media: { id: string; url: string; type: string; caption: string | null }[] }) {
-  if (media.length === 0) return null;
+function CategoryGallery({ name, video, media }: { name: string; video: string | null; media: { id: string; url: string; type: string; caption: string | null }[] }) {
+  const galleryMedia = video && !media.some((item) => item.url === video)
+    ? [{ id: "category-video", url: video, type: "VIDEO", caption: "Trucks in action" }, ...media]
+    : media;
+
+  if (galleryMedia.length === 0) return null;
   return (
     <section className="mt-12" aria-label={`${name} gallery`}>
       <div className="flex items-end justify-between gap-4">
@@ -54,11 +58,11 @@ function CategoryGallery({ name, media }: { name: string; media: { id: string; u
           <p className="mt-1 text-sm text-zinc-500">Photos and videos from our {name.toLowerCase()} stock.</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">
-          <Images className="h-3.5 w-3.5" /> {media.length} file{media.length === 1 ? "" : "s"}
+          <Images className="h-3.5 w-3.5" /> {galleryMedia.length} file{galleryMedia.length === 1 ? "" : "s"}
         </span>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {media.map((m) => {
+        {galleryMedia.map((m) => {
           const url = publicMediaUrl(m.url) ?? m.url;
           return m.type === "VIDEO" ? (
             <video
@@ -166,7 +170,11 @@ export default async function CategoryPage({ params }: Props) {
         )}
 
         {/* Media uploaded to this category (from the admin Smart Wizard or Manual upload) */}
-        <CategoryGallery name={category.name} media={category.media} />
+        <CategoryGallery
+          name={category.name}
+          video={category.video ?? (category.slug === "trucks" ? "/api/files/vehicles/whatsapp-video-2026-09-16-at-11-55-14-pm-mu6ywk2htgr2t6.mp4" : null)}
+          media={category.media}
+        />
       </div>
     </div>
   );

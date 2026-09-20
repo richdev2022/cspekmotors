@@ -132,14 +132,14 @@ export default async function VehicleDetailPage({ params }: Props) {
       </nav>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr]">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-[1.5fr_1fr]">
           {/* Left: media gallery */}
-          <div>
+          <div className="min-w-0 max-w-full overflow-hidden">
             <VehicleGallery media={galleryMedia} title={vehicle.title} />
           </div>
 
           {/* Right: enquiry panel */}
-          <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <div className="min-w-0 max-w-full space-y-5 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-center gap-2">
                 {vehicle.publishDetails && <VehicleStatusBadge status={vehicle.status} />}
