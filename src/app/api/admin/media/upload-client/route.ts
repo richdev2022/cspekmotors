@@ -17,14 +17,19 @@ export async function POST(req: NextRequest) {
       body,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const payload = parsePayload(clientPayload);
-        const vehicle = await db.vehicle.findUnique({ where: { id: payload.vehicleId }, select: { id: true, title: true } });
-        if (!vehicle) throw new Error("Selected vehicle not found.");
+        const vehicle = payload.vehicleId
+          ? await db.vehicle.findUnique({ where: { id: payload.vehicleId }, select: { id: true, title: true, categoryId: true } })
+          : null;
+        const category = payload.categoryId
+          ? await db.category.findUnique({ where: { id: payload.categoryId }, select: { id: true, name: true } })
+          : null;
+        if (!vehicle && !category) throw new Error("A valid vehicle or category is required for video uploads.");
         if (!/\.(mp4|webm|mov)$/i.test(pathname)) throw new Error("Only MP4, WEBM and MOV videos are supported.");
         return {
           allowedContentTypes: ["video/mp4", "video/webm", "video/quicktime"],
           maximumSizeInBytes: 200 * 1024 * 1024,
           addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ ...payload, adminId: admin.id, adminName: admin.name, vehicleTitle: vehicle.title }),
+          tokenPayload: JSON.stringify({ ...payload, adminId: admin.id, adminName: admin.name, vehicleTitle: vehicle?.title ?? category?.name }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
@@ -32,7 +37,8 @@ export async function POST(req: NextRequest) {
         const filename = blob.pathname.split("/").pop() || blob.pathname;
         await db.media.create({
           data: {
-            vehicleId: payload.vehicleId,
+            vehicleId: payload.vehicleId ?? null,
+            categoryId: payload.categoryId ?? null,
             type: "VIDEO",
             url: blob.url,
             filename,
@@ -58,8 +64,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function parsePayload(value: string | null | undefined): { vehicleId: string; fileSize?: number; fileType?: string; adminId?: string; adminName?: string; vehicleTitle?: string } {
+function parsePayload(value: string | null | undefined): { vehicleId?: string; categoryId?: string; fileSize?: number; fileType?: string; adminId?: string; adminName?: string; vehicleTitle?: string } {
   const payload = value ? JSON.parse(value) : null;
-  if (!payload?.vehicleId || typeof payload.vehicleId !== "string") throw new Error("A vehicle is required for video uploads.");
+  if (!payload || (typeof payload.vehicleId !== "string" && typeof payload.categoryId !== "string")) {
+    throw new Error("A vehicle or category is required for video uploads.");
+  }
   return payload;
 }
