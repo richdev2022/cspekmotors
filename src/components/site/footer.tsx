@@ -16,9 +16,9 @@ export function Footer({ settings }: { settings: PublicSettings }) {
   return (
     <footer className="mt-auto bg-zinc-950 text-zinc-300">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
-          <div>
+          <div className="lg:col-span-2">
             { }
             <img
               src={settings.logoDark || "/brand/logo-dark-bg.png"}
@@ -57,6 +57,23 @@ export function Footer({ settings }: { settings: PublicSettings }) {
                 { href: "/about", label: "About Us" },
                 { href: "/contact", label: "Contact Us" },
                 { href: "/admin/login", label: "Staff Login" },
+              ].map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-zinc-400 hover:text-amber-400 transition-colors">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Legal */}
+          <nav aria-label="Legal">
+            <h3 className="text-white font-display font-semibold text-base">Legal</h3>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {[
+                { href: "/terms", label: "Terms & Conditions" },
+                { href: "/privacy", label: "Privacy Policy" },
               ].map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="text-zinc-400 hover:text-amber-400 transition-colors">
@@ -119,9 +136,14 @@ export function Footer({ settings }: { settings: PublicSettings }) {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-zinc-500">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
           <p>© {new Date().getFullYear()} {settings.companyName}. All rights reserved.</p>
-          <p>Quality Vehicles. Trusted Deals.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/terms" className="hover:text-amber-400 transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-amber-400 transition-colors">Privacy</Link>
+            <span className="hidden sm:inline text-zinc-600">·</span>
+            <span className="hidden sm:inline">Quality Vehicles. Trusted Deals.</span>
+          </div>
         </div>
       </div>
     </footer>

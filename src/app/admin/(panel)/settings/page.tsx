@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
-import { upload as uploadBlob } from "@vercel/blob/client";
+import { uploadFile } from "@/lib/upload-client";
 
 interface SettingsData {
   companyName: string; logo: string | null; logoLight: string | null; logoDark: string | null; tagline: string;
@@ -110,12 +110,8 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     else setUploadingDarkLogo(true);
 
     try {
-      const blob = await uploadBlob(`site/${purpose}-${crypto.randomUUID()}-${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/media/upload-client",
-        clientPayload: JSON.stringify({ purpose, unlinked: true, fileSize: file.size, fileType: file.type }),
-      });
-      const url = blob.url;
+      const result = await uploadFile(file, { unlinked: true, purpose });
+      const url = result.url;
       const field = purpose === "share" ? "socialSharingImage" : purpose === "hero" ? "heroImage" : purpose;
       setForm((f) => ({ ...f, [field]: url }));
       const put = await api.put("/api/admin/settings", { [field]: url });
@@ -127,6 +123,8 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
       } else {
         toast.error(put.error ?? "Could not attach the image.");
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed. Please try again.");
     } finally {
       if (purpose === "share") setUploadingShare(false);
       else if (purpose === "logoLight") setUploadingLightLogo(false);

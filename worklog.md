@@ -90,3 +90,36 @@ Work Log:
 
 Stage Summary:
 - All uploaded media now has public surfaces (category gallery, card covers, vehicle fallback); ready to push once user provides PAT
+
+---
+Task ID: 14
+Agent: main (Super Z)
+Task: Fix video & Hero image uploads; robustify URL import; add Terms/Privacy pages; landing page animations
+
+Work Log:
+- Root cause analysis: /api/admin/media/upload-client used @vercel/blob/client's handleUpload which REQUIRES BLOB_READ_WRITE_TOKEN. Without it, the route returned "Something went wrong" (500) — this broke Hero image upload AND video uploads in admin.
+- Rewrote /api/admin/media/upload-client to be a hybrid endpoint: detects Content-Type and routes JSON requests through handleUpload (Vercel Blob mode) OR multipart/form-data requests through the local storage provider. Added a GET handler that reports { blobEnabled } so the client can detect which mode is active.
+- Created src/lib/upload-client.ts — unified client-side upload helper. Checks the capability endpoint once (cached), then either uses @vercel/blob/client's upload() (Blob mode) or falls back to multipart upload via /api/admin/media/upload-client (local mode). All client code now uses this helper.
+- Updated src/app/admin/(panel)/settings/page.tsx (Hero image + logo uploads), src/components/admin/vehicle-form.tsx (MediaManager), src/app/admin/(panel)/media/page.tsx (Smart Wizard uploader) to use the new helper — removed direct @vercel/blob/client imports from these files.
+- Rewrote /api/admin/media/import-url for robust URL import:
+  * Sends a real browser User-Agent + Accept headers (many CDNs reject bare node-fetch)
+  * Normalizes Google Drive / Dropbox / Imgur / GitHub blob URLs into direct download URLs
+  * Sniffs magic bytes when URL has no extension or Content-Type is generic
+  * Streams the body with a 200MB hard cap instead of buffering everything blindly
+  * Returns clear 422/413 error messages
+- Added src/components/site/legal-page.tsx — reusable legal page layout with hero, sticky sidebar TOC, prose-styled body, and CTA.
+- Added src/app/(site)/terms/page.tsx — 15-section Terms & Conditions covering acceptance, use, listings, enquiries, purchases, warranties, delivery, IP, liability, governing law (Nigeria), etc.
+- Added src/app/(site)/privacy/page.tsx — 14-section Privacy Policy aligned with Nigeria Data Protection Act 2023 + NDPR: data categories, lawful bases, sharing, cookies, security, retention, user rights, children, third-party services, admin data, etc.
+- Updated src/components/site/footer.tsx — added a Legal column (Terms + Privacy) and added Terms/Privacy links to the copyright bar. Grid is now 5 columns with brand spanning 2.
+- Added src/app/sitemap.ts entries for /terms and /privacy.
+- Added src/components/site/animations.tsx — reusable framer-motion primitives: Reveal (in-view fade+slide), StaggerGroup/Item (for card lists), HoverLift (card hover), Counter (animated number when scrolled into view), Parallax (scroll-based movement), ScrollProgress (top progress bar), BackToTop (floating button). All respect prefers-reduced-motion.
+- Rewrote src/app/(site)/page.tsx — added ScrollProgress + BackToTop, wrapped section headings in Reveal, replaced feature cards with StaggerGroup + HoverLift, added an animated stats band with Counters (vehicles in stock, categories, inspection points, response time), parallax background on CTA band.
+- Rewrote src/components/site/hero.tsx as a client component — added scroll-linked parallax on the background image and content, staggered entrance animations, a subtle scroll indicator at the bottom, and full prefers-reduced-motion support.
+- End-to-end tested: started standalone server, logged in as admin, verified GET /api/admin/media/upload-client returns { blobEnabled: false } in local mode, uploaded a 1x1 JPEG via multipart POST to the same endpoint → 200 with file URL, verified the uploaded file is served via /api/files/..., imported https://www.w3.org/Icons/w3c_main.png via the URL import route → 201 with stored URL. All previously-failing upload paths now work in local mode without BLOB_READ_WRITE_TOKEN.
+
+Stage Summary:
+- Uploads (Hero image, vehicle videos, media library) now work in BOTH Vercel Blob and local storage modes — previously failed in local mode with "something went wrong" / "server error".
+- URL import handles Google Drive shareable links, Dropbox ?dl=0→?dl=1, Imgur page URLs, raw GitHub URLs, and URLs without file extensions (via magic-byte sniffing).
+- New /terms and /privacy pages with comprehensive Nigeria-specific legal content.
+- Landing page now has scroll-reveal animations, an animated stats counter, hover-lift cards, parallax backgrounds, scroll progress bar, and a back-to-top button — all gated behind prefers-reduced-motion.
+- Files changed: 10 modified, 5 new (animations.tsx, legal-page.tsx, upload-client.ts, terms/page.tsx, privacy/page.tsx). Build verified — all 54 routes compile and serve 200s.
