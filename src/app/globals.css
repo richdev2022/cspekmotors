@@ -125,9 +125,11 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
   }
   h1, h2, h3 {
     font-family: var(--font-space-grotesk), var(--font-inter), sans-serif;

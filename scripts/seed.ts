@@ -259,8 +259,12 @@ async function seedSettings() {
 }
 
 async function seedCategories() {
+  const truckVideo = `/api/files/vehicles/${TRUCK_VIDEO_FILE}`;
+  const truckVideoExists = existsSync(path.join(process.cwd(), "uploads", "vehicles", TRUCK_VIDEO_FILE));
+
   for (const c of CATEGORIES) {
     const image = img(c.imageKey, 1);
+    const video = c.slug === "trucks" && truckVideoExists ? truckVideo : null;
     await db.category.upsert({
       where: { slug: c.slug },
       update: {
@@ -268,12 +272,14 @@ async function seedCategories() {
         description: c.description,
         sortOrder: c.sortOrder,
         ...(image ? { image } : {}),
+        ...(video ? { video } : {}),
       },
       create: {
         name: c.name,
         slug: c.slug,
         description: c.description,
         image,
+        video,
         isActive: true,
         sortOrder: c.sortOrder,
       },
