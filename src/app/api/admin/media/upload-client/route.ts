@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
           adminName: payload.adminName ?? "Admin",
           action: "UPLOAD",
           resource: "MEDIA",
-          resourceId: payload.vehicleId,
+          resourceId: payload.vehicleId ?? payload.categoryId ?? "media-assets",
           details: `Uploaded video for ${payload.vehicleTitle}`,
         });
       },
