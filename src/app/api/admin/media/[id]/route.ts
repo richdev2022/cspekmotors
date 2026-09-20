@@ -61,6 +61,17 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     if (!existing) return jsonError("Media not found.", 404);
 
     await db.media.delete({ where: { id } });
+
+    if (existing.vehicleId && existing.isPrimary) {
+      const replacement = await db.media.findFirst({
+        where: { vehicleId: existing.vehicleId, type: "IMAGE" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      });
+      if (replacement) {
+        await db.media.update({ where: { id: replacement.id }, data: { isPrimary: true } });
+      }
+    }
+
     await getStorageProvider().delete(existing.url).catch(() => {});
 
     await logAudit({
