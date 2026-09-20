@@ -219,6 +219,30 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
           </Card>
 
           <Card>
+            <CardHeader>
+              <CardTitle className="font-display text-base">Homepage Hero Image</CardTitle>
+              <CardDescription>Displayed behind the landing page hero copy. Use a wide JPG, PNG or WEBP image.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-4">
+                {form.heroImage ? (
+                  <img src={form.heroImage} alt="Hero background preview" className="h-20 w-36 rounded-lg border border-zinc-200 object-cover" />
+                ) : (
+                  <span className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-center text-[10px] text-zinc-400">No hero image set</span>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:border-amber-400">
+                    {uploadingHero ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                    {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
+                    <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { uploadImage(e.target.files?.[0], "hero"); e.currentTarget.value = ""; }} />
+                  </label>
+                  {form.heroImage && <Button type="button" variant="outline" size="sm" className="rounded-full text-xs text-red-600 hover:bg-red-50" onClick={clearHeroImage}>Remove</Button>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader className="flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-display text-base">Business Hours</CardTitle>
@@ -286,23 +310,6 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
                     {uploadingShare ? "Uploading…" : "Upload Image"}
                     <input ref={shareRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], "share")} />
                   </label>
-                </div>
-              </Field>
-              <Field label="Hero Background Image" hint="Displayed behind the landing page hero copy. Use a wide JPG, PNG or WEBP image.">
-                <div className="flex flex-wrap items-center gap-4">
-                  {form.heroImage ? (
-                    <img src={form.heroImage} alt="Hero background preview" className="h-20 w-36 rounded-lg border border-zinc-200 object-cover" />
-                  ) : (
-                    <span className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-center text-[10px] text-zinc-400">No hero image set</span>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:border-amber-400">
-                      {uploadingHero ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                      {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
-                      <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { uploadImage(e.target.files?.[0], "hero"); e.currentTarget.value = ""; }} />
-                    </label>
-                    {form.heroImage && <Button type="button" variant="outline" size="sm" className="rounded-full text-xs text-red-600 hover:bg-red-50" onClick={clearHeroImage}>Remove</Button>}
-                  </div>
                 </div>
               </Field>
             </CardContent>

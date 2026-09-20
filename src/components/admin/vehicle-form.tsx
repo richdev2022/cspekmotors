@@ -153,11 +153,16 @@ export function VehicleForm({
         const mediaForm = new FormData();
         mediaForm.set("vehicleId", res.data.id);
         pendingFiles.forEach((file) => mediaForm.append("files", file));
-        const upload = await api.upload<{ count: number }>("/api/admin/media/upload", mediaForm);
-        if (!upload.ok) {
+        const upload = await api.upload<{
+          count: number;
+          failed: { filename: string; error: string }[];
+        }>("/api/admin/media/upload", mediaForm);
+        if (!upload.ok || !upload.data) {
           toast.error(`Vehicle created, but photos could not be uploaded: ${upload.error ?? "Upload failed."}`);
+        } else if (upload.data.failed.length > 0) {
+          toast.warning(`Vehicle created. ${upload.data.count} file(s) uploaded, ${upload.data.failed.length} failed.`);
         } else {
-          toast.success(`${upload.data?.count ?? pendingFiles.length} file(s) uploaded.`);
+          toast.success(`${upload.data.count} file(s) uploaded.`);
         }
       }
       toast.success("Vehicle created successfully.");

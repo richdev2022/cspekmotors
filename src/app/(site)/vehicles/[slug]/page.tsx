@@ -104,7 +104,7 @@ export default async function VehicleDetailPage({ params }: Props) {
     brand: { "@type": "Brand", name: vehicle.brand },
     category: vehicle.category.name,
     itemCondition: vehicle.condition === "NEW" ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
-    image: vehicle.media.filter((m) => m.type === "IMAGE").map((m) => m.url),
+    image: galleryMedia.filter((m) => m.type === "IMAGE").map((m) => m.url),
     offers: {
       "@type": "Offer",
       availability: vehicle.status === "AVAILABLE" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
@@ -127,7 +127,7 @@ export default async function VehicleDetailPage({ params }: Props) {
           <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
           <li><Link href={`/categories/${vehicle.category.slug}`} className="hover:text-amber-400 transition-colors">{vehicle.category.name}</Link></li>
           <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
-          <li aria-current="page" className="truncate font-medium text-white">{vehicle.title}</li>
+          <li aria-current="page" title={vehicle.title} className="max-w-[55vw] truncate font-medium text-white sm:max-w-[28rem]">{vehicle.title}</li>
         </ol>
       </nav>
 
@@ -171,7 +171,7 @@ export default async function VehicleDetailPage({ params }: Props) {
                     </div>
                   )}
                   {parseSpecifications(vehicle.specifications).length > 0 && (
-                    <dl className="mt-5 grid grid-cols-2 gap-2 border-t border-zinc-100 pt-5 text-sm">
+                    <dl className="mt-5 grid grid-cols-1 gap-2 border-t border-zinc-100 pt-5 text-sm sm:grid-cols-2">
                       {parseSpecifications(vehicle.specifications).map((spec) => (
                         <div key={spec.label} className="rounded-lg bg-zinc-50 p-2.5">
                           <dt className="text-xs text-zinc-500">{spec.label}</dt>
