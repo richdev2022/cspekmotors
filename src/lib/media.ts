@@ -12,6 +12,24 @@ export const ALLOWED_ATTACHMENT_TYPES = [
 export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 export const VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 
+export function mediaKindFromFile(file: { type: string; name: string }): "image" | "video" | null {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (file.type.startsWith("video/") || VIDEO_EXTENSIONS.includes(ext)) return "video";
+  if (file.type.startsWith("image/") || IMAGE_EXTENSIONS.includes(ext)) return "image";
+  return null;
+}
+
+export function mediaMimeType(file: { type: string; name: string }): string {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg"].includes(ext)) return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "mp4") return "video/mp4";
+  if (ext === "webm") return "video/webm";
+  if (ext === "mov") return "video/quicktime";
+  return file.type || "application/octet-stream";
+}
+
 export function publicMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
 
@@ -30,7 +48,7 @@ export function publicMediaUrl(url: string | null | undefined): string | null {
 
 
 function maxMb(kind: "image" | "video"): number {
-  const fallback = kind === "image" ? 8 : 120;
+  const fallback = kind === "image" ? 20 : 200;
   const val = Number(process.env[kind === "image" ? "MEDIA_MAX_IMAGE_MB" : "MEDIA_MAX_VIDEO_MB"]);
   return Number.isFinite(val) && val > 0 ? val : fallback;
 }
@@ -47,7 +65,7 @@ export function validateUpload(file: { size: number; type: string; name: string 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
   if (kind === "image") {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]) || !IMAGE_EXTENSIONS.includes(ext)) {
+    if ((!file.type || !ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number])) && !IMAGE_EXTENSIONS.includes(ext)) {
       return { ok: false, error: `Unsupported image format. Allowed: JPG, JPEG, PNG, WEBP.` };
     }
     if (file.size > maxImageBytes()) {
@@ -57,7 +75,7 @@ export function validateUpload(file: { size: number; type: string; name: string 
   }
 
   if (kind === "video") {
-    if (!ALLOWED_VIDEO_TYPES.includes(file.type as (typeof ALLOWED_VIDEO_TYPES)[number]) && !VIDEO_EXTENSIONS.includes(ext)) {
+    if ((!file.type || !ALLOWED_VIDEO_TYPES.includes(file.type as (typeof ALLOWED_VIDEO_TYPES)[number])) && !VIDEO_EXTENSIONS.includes(ext)) {
       return { ok: false, error: `Unsupported video format. Allowed: MP4, WEBM, MOV.` };
     }
     if (file.size > maxVideoBytes()) {

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
 
 interface MediaItem {
   id: string; url: string; type: string; filename: string; caption: string | null;
@@ -190,7 +191,7 @@ function MediaGrid({ items, onDelete, selectedIds, setSelectedIds }: { items: Me
         <div key={m.id} className={cn("group relative aspect-square overflow-hidden rounded-xl border bg-zinc-100", selectedIds.includes(m.id) ? "border-amber-500 ring-2 ring-amber-300" : "border-zinc-200")}>
           <input type="checkbox" aria-label={`Select ${m.filename}`} checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds((current) => e.target.checked ? [...current, m.id] : current.filter((id) => id !== m.id))} className="absolute left-2 top-2 z-10 h-4 w-4 rounded border-zinc-300 accent-amber-500" />
           { }
-          <img src={m.url} alt={m.caption || m.filename} className="h-full w-full object-cover" loading="lazy" />
+          {m.type === "VIDEO" ? <video src={m.url} controls preload="metadata" className="h-full w-full object-cover" aria-label={m.caption || m.filename} /> : <img src={m.url} alt={m.caption || m.filename} className="h-full w-full object-cover" loading="lazy" />}
           {m.type === "VIDEO" && (
             <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-zinc-950/75 px-2 py-0.5 text-[9px] font-bold text-white">
               <Play className="h-2.5 w-2.5 fill-current" /> VIDEO
@@ -239,8 +240,9 @@ function useDeleteMedia(qc: ReturnType<typeof useQueryClient>) {
 type UploadMode = "wizard" | "manual";
 
 const ACCEPTED_MIMES = "image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime";
-const MAX_IMAGE_MB = 8;
-const MAX_VIDEO_MB = 120;
+const MAX_IMAGE_MB = 20;
+const MAX_VIDEO_MB = 200;
+const MAX_FILES = 100;
 
 interface CategoryOption { id: string; name: string }
 interface VehicleOption { id: string; title: string; categoryName: string | null }
@@ -281,18 +283,10 @@ interface DetectResult {
 }
 
 function clientValidate(f: File): string | null {
-  const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
-  if (f.type.startsWith("image/")) {
-    if (!["jpg", "jpeg", "png", "webp"].includes(ext)) return "Unsupported image format. Allowed: JPG, PNG, WEBP.";
-    if (f.size > MAX_IMAGE_MB * 1024 * 1024) return `Image too large — maximum ${MAX_IMAGE_MB}MB.`;
-    return null;
-  }
-  if (f.type.startsWith("video/")) {
-    if (!["mp4", "webm", "mov"].includes(ext)) return "Unsupported video format. Allowed: MP4, WEBM, MOV.";
-    if (f.size > MAX_VIDEO_MB * 1024 * 1024) return `Video too large — maximum ${MAX_VIDEO_MB}MB.`;
-    return null;
-  }
-  return "Unsupported format — use JPG, PNG, WEBP, MP4, WEBM or MOV.";
+  const kind = mediaKindFromFile(f);
+  if (!kind) return "Unsupported format — use JPG, PNG, WEBP, MP4, WEBM or MOV.";
+  const validation = validateUpload({ size: f.size, type: mediaMimeType(f), name: f.name }, kind);
+  return validation.ok ? null : validation.error ?? "Invalid media file.";
 }
 
 /** Shared categories + vehicles for the upload destination selects. */
@@ -446,8 +440,9 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
   function addFiles(list: FileList | File[]) {
     const incoming = Array.from(list);
     if (incoming.length === 0 || uploading) return;
+    if (incoming.length > MAX_FILES) toast.error(`Choose no more than ${MAX_FILES} files at once.`);
     const accepted: WizardFile[] = [];
-    for (const f of incoming) {
+    for (const f of incoming.slice(0, MAX_FILES)) {
       const err = clientValidate(f);
       if (err) {
         toast.error(`"${f.name}": ${err}`);
@@ -853,14 +848,27 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
           multiple
           accept={ACCEPTED_MIMES}
           className="hidden"
-          onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); e.currentTarget.value = ""; }}
+          onChange={(e) => {
+            const incoming = Array.from(e.target.files ?? []);
+            if (incoming.length > MAX_FILES) toast.error(`Choose no more than ${MAX_FILES} files at once.`);
+            const accepted = incoming.slice(0, MAX_FILES).filter((file) => {
+              const error = clientValidate(file);
+              if (error) toast.error(`"${file.name}": ${error}`);
+              return !error;
+            });
+            setFiles(accepted);
+            e.currentTarget.value = "";
+          }}
         />
         {files.length > 0 && (
           <ul className="styled-scrollbar max-h-32 space-y-1 overflow-y-auto text-xs">
             {files.map((f, i) => (
-              <li key={i} className="flex items-center justify-between rounded-lg bg-zinc-100 px-2.5 py-1.5">
+              <li key={`${f.name}-${i}`} className="flex items-center justify-between rounded-lg bg-zinc-100 px-2.5 py-1.5">
                 <span className="truncate">{f.name}</span>
-                <span className="ml-2 shrink-0 text-zinc-400">{formatFileSize(f.size)}</span>
+                <span className="ml-2 flex shrink-0 items-center gap-2 text-zinc-400">
+                  {formatFileSize(f.size)}
+                  <button type="button" onClick={() => setFiles((current) => current.filter((_, index) => index !== i))} className="text-zinc-500 hover:text-red-600" aria-label={`Remove ${f.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                </span>
               </li>
             ))}
           </ul>

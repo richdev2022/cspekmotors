@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatFileSize } from "@/lib/format";
+import { mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
 
 // ------------------------------------------------------------
 // Form schema (mirrors the API zod schema)
@@ -111,6 +112,17 @@ export function VehicleForm({
   const publishDetails = useWatch({ control: form.control, name: "publishDetails" });
 
   async function onSubmit(values: FormValues) {
+    const invalidFile = pendingFiles.map((file) => ({ file, kind: mediaKindFromFile(file) })).find(({ file, kind }) => !kind || !validateUpload({ size: file.size, type: mediaMimeType(file), name: file.name }, kind!).ok);
+    if (mode === "create" && invalidFile) {
+      const kind = invalidFile.kind;
+      const validation = kind ? validateUpload({ size: invalidFile.file.size, type: mediaMimeType(invalidFile.file), name: invalidFile.file.name }, kind) : null;
+      toast.error(`"${invalidFile.file.name}": ${validation?.error ?? "Unsupported media format."}`);
+      return;
+    }
+    if (mode === "create" && pendingFiles.length > 100) {
+      toast.error("You can upload up to 100 files at once.");
+      return;
+    }
     setSaving(true);
     const numOrNull = (v?: string) => (v && v.trim() !== "" && !isNaN(Number(v)) ? Number(v) : null);
 
@@ -271,7 +283,14 @@ export function VehicleForm({
                   accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
                   className="hidden"
                   onChange={(event) => {
-                    setPendingFiles((current) => [...current, ...Array.from(event.target.files ?? [])]);
+                    const incoming = Array.from(event.target.files ?? []);
+                    const accepted = incoming.filter((file) => {
+                      const kind = mediaKindFromFile(file);
+                      const validation = kind ? validateUpload({ size: file.size, type: mediaMimeType(file), name: file.name }, kind) : { ok: false, error: "Unsupported media format." };
+                      if (!validation.ok) toast.error(`"${file.name}": ${validation.error}`);
+                      return validation.ok;
+                    });
+                    setPendingFiles((current) => [...current, ...accepted].slice(0, 100));
                     event.currentTarget.value = "";
                   }}
                 />
@@ -481,6 +500,20 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
     if (!files || !vehicleId) return;
     const list = Array.from(files);
     if (list.length === 0) return;
+    if (list.length > 100) {
+      toast.error("You can upload up to 100 files at once.");
+      return;
+    }
+    const invalid = list.find((file) => {
+      const kind = mediaKindFromFile(file);
+      return !kind || !validateUpload({ size: file.size, type: mediaMimeType(file), name: file.name }, kind).ok;
+    });
+    if (invalid) {
+      const kind = mediaKindFromFile(invalid);
+      const validation = kind ? validateUpload({ size: invalid.size, type: mediaMimeType(invalid), name: invalid.name }, kind) : null;
+      toast.error(`"${invalid.name}": ${validation?.error ?? "Unsupported media format."}`);
+      return;
+    }
 
     const fd = new FormData();
     fd.set("vehicleId", vehicleId);
@@ -570,7 +603,7 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
         <CardTitle className="font-display text-base">Photos & Videos</CardTitle>
         <CardDescription>
           Upload multiple images (JPG, PNG, WEBP — max 8MB) and videos (MP4, WEBM, MOV — max 120MB).
-          The primary image is used as the cover everywhere on the website.
+          The primary image is used as the cover everywhere on the website. Up to 100 files can be uploaded at once. Images: max 20MB; videos: max 200MB.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -633,10 +666,7 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
               <div key={m.id} className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
                 <div className="relative aspect-video bg-zinc-100">
                   {m.type === "VIDEO" ? (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-900 text-zinc-300">
-                      <Play className="h-8 w-8 fill-current" />
-                      <span className="mt-1.5 text-[10px] font-bold uppercase tracking-widest">Video</span>
-                    </div>
+                    <video src={m.url} controls preload="metadata" className="h-full w-full object-cover" aria-label={m.caption || m.filename} />
                   ) : (
                      
                     <img src={m.url} alt={m.caption || m.filename} className="h-full w-full object-cover" loading="lazy" />
