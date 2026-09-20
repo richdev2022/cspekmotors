@@ -128,8 +128,8 @@ export async function POST(req: NextRequest) {
     }
 
     await logAudit({
-      adminId: admin.id, adminName: admin.name, action: "UPLOAD", resource: "MEDIA",
-      resourceId: vehicleId ?? categoryId, details: `Uploaded ${saved.length} file(s)${vehicle ? ` for ${vehicle.title}` : ""}${failed.length ? ` (${failed.length} failed)` : ""}`,
+      adminId: admin.id, adminName: admin.name, action: "UPLOAD", resource: unlinked ? "SETTINGS" : "MEDIA",
+      resourceId: vehicleId ?? categoryId ?? "site-assets", details: `Uploaded ${saved.length} file(s)${vehicle ? ` for ${vehicle.title}` : ""}${failed.length ? ` (${failed.length} failed)` : ""}`,
     });
 
     return jsonOk(unlinked ? saved : { saved, failed, count: saved.length }, { status: 201 });
