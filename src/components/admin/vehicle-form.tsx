@@ -150,19 +150,24 @@ export function VehicleForm({
     qc.invalidateQueries({ queryKey: ["dashboard"] });
     if (mode === "create") {
       if (pendingFiles.length > 0) {
-        const mediaForm = new FormData();
-        mediaForm.set("vehicleId", res.data.id);
-        pendingFiles.forEach((file) => mediaForm.append("files", file));
-        const upload = await api.upload<{
-          count: number;
-          failed: { filename: string; error: string }[];
-        }>("/api/admin/media/upload", mediaForm);
-        if (!upload.ok || !upload.data) {
-          toast.error(`Vehicle created, but photos could not be uploaded: ${upload.error ?? "Upload failed."}`);
-        } else if (upload.data.failed.length > 0) {
-          toast.warning(`Vehicle created. ${upload.data.count} file(s) uploaded, ${upload.data.failed.length} failed.`);
+        let okCount = 0;
+        let failedCount = 0;
+        let firstError = "";
+        for (const file of pendingFiles) {
+          try {
+            await uploadFile(file, { vehicleId: res.data.id });
+            okCount += 1;
+          } catch (err) {
+            failedCount += 1;
+            if (!firstError) firstError = err instanceof Error ? err.message : "Upload failed.";
+          }
+        }
+        if (failedCount > 0 && okCount === 0) {
+          toast.error(`Vehicle created, but media could not be uploaded: ${firstError}`);
+        } else if (failedCount > 0) {
+          toast.warning(`Vehicle created. ${okCount} file(s) uploaded, ${failedCount} failed.`);
         } else {
-          toast.success(`${upload.data.count} file(s) uploaded.`);
+          toast.success(`${okCount} file(s) uploaded.`);
         }
       }
       toast.success("Vehicle created successfully.");

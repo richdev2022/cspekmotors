@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleUpload } from "@vercel/blob/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { assertSameOrigin, handleApiError, jsonError } from "@/lib/api-utils";
+import { assertSameOrigin, handleApiError, jsonError, jsonOk } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 import { getStorageProvider } from "@/lib/storage";
 import { mediaKindFromFile, mediaMimeType, mediaTypeFromMime, validateUpload } from "@/lib/media";
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get("content-type") ?? "";
 
     // ------------------------------------------------------------------
-    // Vercel Blob path — JSON body to obtain an upload token
+    // Vercel Blob path — JSON body
     // ------------------------------------------------------------------
     if (contentType.includes("application/json")) {
       if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -44,6 +44,87 @@ export async function POST(req: NextRequest) {
       const body = await req.json().catch(() => null);
       if (!body) return jsonError("Invalid upload request body.", 400);
 
+      // ----------------------------------------------------------------
+      // Register action — create DB record after a successful Blob upload
+      // ----------------------------------------------------------------
+      // The client calls this after `@vercel/blob/client`'s `upload()`
+      // returns, because the `onUploadCompleted` callback requires
+      // `VERCEL_BLOB_CALLBACK_URL` to be set (and publicly reachable),
+      // which is not always practical. The register action is a simpler,
+      // more reliable way to ensure the DB record is created.
+      if (body.action === "register") {
+        const url = typeof body.url === "string" ? body.url : "";
+        const pathname = typeof body.pathname === "string" ? body.pathname : "";
+        const contentTypeStr = typeof body.contentType === "string" ? body.contentType : "application/octet-stream";
+        const fileSize = typeof body.fileSize === "number" ? body.fileSize : null;
+        const vehicleId = typeof body.vehicleId === "string" && body.vehicleId ? body.vehicleId : null;
+        const categoryId = typeof body.categoryId === "string" && body.categoryId ? body.categoryId : null;
+
+        if (!url) return jsonError("Missing blob URL.", 422);
+        if (!vehicleId && !categoryId) {
+          // Site asset — no DB record needed, just log the audit
+          await logAudit({
+            adminId: admin.id,
+            adminName: admin.name,
+            action: "UPLOAD",
+            resource: "SETTINGS",
+            resourceId: "site-assets",
+            details: `Registered site asset upload`,
+          });
+          return jsonOk({ ok: true });
+        }
+
+        // Verify vehicle/category exist
+        if (vehicleId) {
+          const vehicle = await db.vehicle.findUnique({ where: { id: vehicleId }, select: { title: true, categoryId: true } });
+          if (!vehicle) return jsonError("Selected vehicle not found.", 404);
+        }
+        if (categoryId) {
+          const category = await db.category.findUnique({ where: { id: categoryId }, select: { name: true } });
+          if (!category) return jsonError("Selected category not found.", 404);
+        }
+
+        const filename = pathname.split("/").pop() || pathname || url.split("/").pop() || "upload";
+        const type = contentTypeStr.startsWith("video/") ? "VIDEO" : "IMAGE";
+
+        // Avoid duplicate DB records if the client retries the register call
+        const existing = await db.media.findFirst({
+          where: { url },
+          select: { id: true },
+        });
+        if (existing) {
+          return jsonOk({ ok: true, id: existing.id, duplicate: true });
+        }
+
+        const media = await db.media.create({
+          data: {
+            vehicleId,
+            categoryId,
+            type,
+            url,
+            filename,
+            mimeType: contentTypeStr,
+            fileSize,
+            sortOrder: 99,
+            isPrimary: false,
+          },
+        });
+
+        await logAudit({
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPLOAD",
+          resource: "MEDIA",
+          resourceId: vehicleId ?? categoryId ?? "media-assets",
+          details: `Registered ${type.toLowerCase()} upload from Blob`,
+        });
+
+        return jsonOk({ ok: true, id: media.id });
+      }
+
+      // ----------------------------------------------------------------
+      // Default: handle the @vercel/blob/client token request flow
+      // ----------------------------------------------------------------
       const result = await handleUpload({
         request: req,
         body,
@@ -77,6 +158,13 @@ export async function POST(req: NextRequest) {
               adminName: admin.name,
               vehicleTitle: vehicle?.title ?? category?.name,
             }),
+            // callbackUrl is required for onUploadCompleted to fire.
+            // We use the register action (above) as a more reliable fallback,
+            // but still set a callback URL in case VERCEL_BLOB_CALLBACK_URL
+            // is configured on the deployment.
+            ...(process.env.APP_URL ? {
+              callbackUrl: `${process.env.APP_URL.replace(/\/$/, "")}/api/admin/media/upload-client`,
+            } : {}),
           };
         },
         onUploadCompleted: async ({ blob, tokenPayload }) => {
@@ -94,6 +182,9 @@ export async function POST(req: NextRequest) {
             return;
           }
           const type = blob.contentType?.startsWith("video/") ? "VIDEO" : "IMAGE";
+          // Avoid duplicates — the client may also call the register action
+          const existing = await db.media.findFirst({ where: { url: blob.url }, select: { id: true } });
+          if (existing) return;
           await db.media.create({
             data: {
               vehicleId: payload.vehicleId ?? null,
