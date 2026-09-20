@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { upload as uploadBlob } from "@vercel/blob/client";
 
 interface SettingsData {
   companyName: string; logo: string | null; logoLight: string | null; logoDark: string | null; tagline: string;
@@ -108,16 +109,12 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     else setUploadingDarkLogo(true);
 
     try {
-      const fd = new FormData();
-      fd.set("files", file);
-      fd.set("unlinked", "true");
-      const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
-      const uploaded = Array.isArray(res.data) ? res.data[0] : undefined;
-      if (!res.ok || !uploaded?.url) {
-        toast.error(res.error ?? "Upload failed.");
-        return;
-      }
-      const url = uploaded.url;
+      const blob = await uploadBlob(`site/${purpose}-${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/media/upload-client",
+        clientPayload: JSON.stringify({ purpose, unlinked: true, fileSize: file.size, fileType: file.type }),
+      });
+      const url = blob.url;
       const field = purpose === "share" ? "socialSharingImage" : purpose === "hero" ? "heroImage" : purpose;
       setForm((f) => ({ ...f, [field]: url }));
       const put = await api.put("/api/admin/settings", { [field]: url });
