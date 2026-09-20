@@ -44,6 +44,8 @@ export const api = {
     new Promise<ApiResult<T>>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url);
+      xhr.withCredentials = true;
+      xhr.timeout = 5 * 60 * 1000;
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
       };
@@ -56,10 +58,12 @@ export const api = {
             resolve({ ok: false, status: xhr.status, error: json.error || `Upload failed (${xhr.status})` });
           }
         } catch {
-          resolve({ ok: false, status: xhr.status, error: "Upload failed — invalid server response." });
+          resolve({ ok: false, status: xhr.status, error: `Upload failed — server returned an invalid response${xhr.status ? ` (${xhr.status})` : ""}.` });
         }
       };
-      xhr.onerror = () => resolve({ ok: false, status: 0, error: "Network error during upload." });
+      xhr.onerror = () => resolve({ ok: false, status: 0, error: "Network error during upload. The file may be too large for the server." });
+      xhr.ontimeout = () => resolve({ ok: false, status: 0, error: "Upload timed out. Please try fewer files or a smaller video." });
+      xhr.onabort = () => resolve({ ok: false, status: 0, error: "Upload was cancelled." });
       xhr.send(formData);
     }),
 };

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { assertSameOrigin, handleApiError, jsonError, jsonOk } from "@/lib/api-utils";
-import { maxImageBytes, maxVideoBytes, validateUpload } from "@/lib/media";
+import { maxImageBytes, maxVideoBytes, mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
 import { classifyVehicleMedia, extractVideoFrame, matchCategoryToDb, matchDetectedVehicle } from "@/lib/ai-detect";
 
 export const runtime = "nodejs";
@@ -29,9 +29,10 @@ export async function POST(req: NextRequest) {
       return jsonError("Please provide a file to analyze.", 422);
     }
 
-    const isVideo = file.type.startsWith("video/");
-    const kind = isVideo ? "video" : "image";
-    const validation = validateUpload({ size: file.size, type: file.type, name: file.name }, kind);
+    const kind = mediaKindFromFile(file);
+    if (!kind) return jsonError(`"${file.name}": Unsupported media format.`, 422);
+    const isVideo = kind === "video";
+    const validation = validateUpload({ size: file.size, type: mediaMimeType(file), name: file.name }, kind);
     if (!validation.ok) return jsonError(`"${file.name}": ${validation.error}`, 422);
 
     const sizeLimit = isVideo ? maxVideoBytes() : maxImageBytes();

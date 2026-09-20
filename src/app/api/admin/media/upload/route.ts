@@ -2,14 +2,14 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { assertSameOrigin, handleApiError, jsonError, jsonOk } from "@/lib/api-utils";
-import { validateUpload, mediaTypeFromMime } from "@/lib/media";
+import { validateUpload, mediaKindFromFile, mediaMimeType, mediaTypeFromMime } from "@/lib/media";
 import { getStorageProvider } from "@/lib/storage";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const MAX_FILES_PER_REQUEST = 20;
+const MAX_FILES_PER_REQUEST = 100;
 
 /**
  * POST /api/admin/media/upload — multipart upload of one or more files.
@@ -57,9 +57,14 @@ export async function POST(req: NextRequest) {
     }
 
     for (const file of files) {
-      const isVideo = file.type.startsWith("video/");
-      const kind = isVideo ? "video" : "image";
-      const validation = validateUpload({ size: file.size, type: file.type, name: file.name }, kind);
+      const kind = mediaKindFromFile(file);
+      if (!kind) {
+        failed.push({ filename: file.name, error: "Unsupported media format. Allowed: JPG, PNG, WEBP, MP4, WEBM, MOV." });
+        continue;
+      }
+      const mimeType = mediaMimeType(file);
+      const isVideo = kind === "video";
+      const validation = validateUpload({ size: file.size, type: mimeType, name: file.name }, kind);
       if (!validation.ok) {
         failed.push({ filename: file.name, error: validation.error ?? "Unsupported file." });
         continue;
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
         const result = await storage.upload({
           buffer,
           filename: file.name,
-          mimeType: file.type,
+          mimeType,
           folder: vehicleId ? "vehicles" : categoryId ? "categories" : "site",
         });
 
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest) {
         data: {
           vehicleId,
           categoryId: categoryId ?? vehicle?.categoryId ?? null,
-          type: mediaTypeFromMime(file.type),
+          type: mediaTypeFromMime(mimeType),
           url: result.url,
           filename: result.filename,
           mimeType: result.mimeType,
