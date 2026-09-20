@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { publicMediaUrl } from "@/lib/media";
+import { uploadFile } from "@/lib/upload-client";
 
 interface CategoryRow {
   id: string; name: string; slug: string; description: string | null; image: string | null;
@@ -115,27 +116,25 @@ export default function AdminCategoriesPage() {
   async function uploadImage(file: File | undefined) {
     if (!file) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.set("files", file);
-    fd.set("unlinked", "true"); // category images live on the category record itself
-    const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
-    setUploading(false);
-    if (!res.ok || !res.data || res.data.length === 0) {
-      toast.error(res.error ?? "Image upload failed.");
-      return;
-    }
-    const url = new URL(res.data[0].url, window.location.origin).toString();
-    if (editing) {
-      const updated = await api.put(`/api/admin/categories/${editing.id}`, { image: url });
-      if (updated.ok) {
-        toast.success("Category image updated.");
-        refresh();
+    try {
+      const result = await uploadFile(file, { unlinked: true, purpose: "category" });
+      const url = result.url;
+      if (editing) {
+        const updated = await api.put(`/api/admin/categories/${editing.id}`, { image: url });
+        if (updated.ok) {
+          toast.success("Category image updated.");
+          refresh();
+        } else {
+          toast.error(updated.error ?? "Could not attach the image.");
+        }
       } else {
-        toast.error(updated.error ?? "Could not attach the image.");
+        pendingImageRef.current = url;
+        toast.success("Image ready — it will be attached when you create the category.");
       }
-    } else {
-      pendingImageRef.current = url;
-      toast.success("Image ready — it will be attached when you create the category.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Image upload failed.");
+    } finally {
+      setUploading(false);
     }
   }
 

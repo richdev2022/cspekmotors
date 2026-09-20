@@ -55,14 +55,19 @@ export interface UploadResult {
 /**
  * Universal upload helper — handles both Vercel Blob and local storage modes.
  *
- * In Blob mode, it uses `@vercel/blob/client`'s `upload()` for direct-to-Blob
- * multipart uploads (great for large videos).
+ * **Vercel Blob mode** (`BLOB_READ_WRITE_TOKEN` is set on the server):
+ *   1. Uses `@vercel/blob/client`'s `upload()` to upload the file DIRECTLY to
+ *      Vercel Blob (bypasses the Vercel Function body size limit of 4.5MB).
+ *   2. After the Blob upload succeeds, sends a small JSON "register" request
+ *      to `/api/admin/media/upload-client` to create the DB record. This is
+ *      more reliable than relying on the `onUploadCompleted` callback (which
+ *      requires `VERCEL_BLOB_CALLBACK_URL` to be set and publicly reachable).
  *
- * In local mode, it sends a regular multipart request to the same endpoint,
- * which stores the file via the configured storage provider.
+ * **Local mode** (no Blob token — local dev / VPS / persistent disk):
+ *   Sends a regular multipart request to the same endpoint, which stores the
+ *      file via the configured storage provider and creates the DB record.
  *
- * Either way, the caller receives `{ url }` and the optional DB record is
- * created server-side.
+ * Either way, the caller receives `{ url }` and the DB record is created.
  */
 export async function uploadFile(file: File, options: UploadOptions = {}): Promise<UploadResult> {
   // Client-side validation — fail fast before any network call
@@ -79,7 +84,7 @@ export async function uploadFile(file: File, options: UploadOptions = {}): Promi
   const useBlob = await isBlobUploadEnabled();
 
   if (useBlob) {
-    // Direct-to-Blob upload (bypasses the Next.js server for large files)
+    // Direct-to-Blob upload — bypasses the Vercel Function body size limit
     const clientPayload = JSON.stringify({
       vehicleId: options.vehicleId,
       categoryId: options.categoryId,
@@ -98,7 +103,35 @@ export async function uploadFile(file: File, options: UploadOptions = {}): Promi
       clientPayload,
       onUploadProgress: ({ percentage }) => options.onProgress?.(Math.round(percentage)),
     });
-    return { url: blob.url, filename: blob.pathname.split("/").pop(), contentType: blob.contentType, size: file.size };
+
+    // Register the upload in the DB — small JSON request, never hits body size limit
+    if (!options.unlinked) {
+      try {
+        const regRes = await api.post<{ ok: boolean }>("/api/admin/media/upload-client", {
+          action: "register",
+          url: blob.url,
+          pathname: blob.pathname,
+          contentType: blob.contentType,
+          fileSize: file.size,
+          vehicleId: options.vehicleId,
+          categoryId: options.categoryId,
+        });
+        if (!regRes.ok) {
+          // Don't throw — the file is uploaded to Blob successfully;
+          // the admin can re-link it from the media library if needed.
+          console.warn("[upload] DB register failed:", regRes.error);
+        }
+      } catch (err) {
+        console.warn("[upload] DB register error:", err);
+      }
+    }
+
+    return {
+      url: blob.url,
+      filename: blob.pathname.split("/").pop(),
+      contentType: blob.contentType,
+      size: file.size,
+    };
   }
 
   // Local multipart upload — works for any file size up to the server's limit

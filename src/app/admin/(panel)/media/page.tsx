@@ -811,30 +811,45 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
       return;
     }
     const [kind, id] = target.split(":");
-    const fd = new FormData();
-    if (kind === "vehicle") fd.set("vehicleId", id);
-    else fd.set("categoryId", id);
-    files.forEach((f) => fd.append("files", f));
+    const targetPayload = kind === "vehicle" ? { vehicleId: id } : { categoryId: id };
 
     setUploading(true);
     setProgress(0);
-    const res = await api.upload<{
-      saved: { filename: string }[];
-      failed: { filename: string; error: string }[];
-      count: number;
-    }>("/api/admin/media/upload", fd, setProgress);
-    setUploading(false);
+    let ok = 0;
+    const failed: { name: string; error: string }[] = [];
 
-    if (!res.ok || !res.data) {
-      toast.error(res.error ?? "Upload failed.");
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        await uploadFile(file, {
+          ...targetPayload,
+          onProgress: (pct) => {
+            const overall = Math.round(((i + pct / 100) / files.length) * 100);
+            setProgress(overall);
+          },
+        });
+        ok += 1;
+      } catch (err) {
+        failed.push({
+          name: file.name,
+          error: err instanceof Error ? err.message : "Upload failed.",
+        });
+      }
+    }
+
+    setUploading(false);
+    setProgress(100);
+
+    if (failed.length > 0 && ok === 0) {
+      toast.error(`${failed[0].name}: ${failed[0].error}`);
       return;
     }
-    if (res.data.failed.length > 0) {
-      toast.warning(`${res.data.count} uploaded, ${res.data.failed.length} failed. Review the upload errors and retry.`);
+    if (failed.length > 0) {
+      toast.warning(`${ok} uploaded, ${failed.length} failed. Review the upload errors and retry.`);
       onDone();
       return;
     }
-    toast.success(`${res.data.count} file(s) uploaded successfully.`);
+    toast.success(`${ok} file(s) uploaded successfully.`);
     setFiles([]);
     onDone();
     onFinished();

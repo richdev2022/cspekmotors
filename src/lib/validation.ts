@@ -137,11 +137,16 @@ export const mediaUpdateSchema = z.object({
 // ------------------------------------------------------------
 // Settings (admin)
 // ------------------------------------------------------------
+// URL fields use a generous max (2048 — the de-facto URL length limit in modern
+// browsers and servers) so that Vercel Blob URLs with long filenames + random
+// suffixes are never rejected.
+export const MAX_URL_LENGTH = 2048;
+
 export const settingsUpdateSchema = z.object({
   companyName: z.string().min(2).max(160).optional(),
-  logo: z.string().max(500).nullable().optional(),
-  logoLight: z.string().max(500).nullable().optional(),
-  logoDark: z.string().max(500).nullable().optional(),
+  logo: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  logoLight: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  logoDark: z.string().max(MAX_URL_LENGTH).nullable().optional(),
   tagline: z.string().max(200).optional(),
   phone: z.string().max(40).nullable().optional(),
   phoneSecondary: z.string().max(40).nullable().optional(),
@@ -149,18 +154,18 @@ export const settingsUpdateSchema = z.object({
   email: z.string().email("Enter a valid email address.").max(160).nullable().optional().or(z.literal("")),
   address: z.string().max(400).nullable().optional(),
   businessHours: z.array(z.object({ days: z.string().min(1).max(80), hours: z.string().min(1).max(80) })).max(10).optional(),
-  mapUrl: z.string().max(600).nullable().optional(),
-  facebook: z.string().max(300).nullable().optional(),
-  instagram: z.string().max(300).nullable().optional(),
-  tiktok: z.string().max(300).nullable().optional(),
-  twitter: z.string().max(300).nullable().optional(),
-  youtube: z.string().max(300).nullable().optional(),
+  mapUrl: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  facebook: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  instagram: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  tiktok: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  twitter: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  youtube: z.string().max(MAX_URL_LENGTH).nullable().optional(),
   websiteTitle: z.string().max(200).optional(),
   websiteDescription: z.string().max(500).optional(),
   seoDefaultTitle: z.string().max(200).nullable().optional(),
   seoDefaultDescription: z.string().max(500).nullable().optional(),
-  socialSharingImage: z.string().max(600).nullable().optional(),
-  heroImage: z.string().max(600).nullable().optional(),
+  socialSharingImage: z.string().max(MAX_URL_LENGTH).nullable().optional(),
+  heroImage: z.string().max(MAX_URL_LENGTH).nullable().optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

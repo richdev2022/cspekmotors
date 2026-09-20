@@ -123,3 +123,60 @@ Stage Summary:
 - New /terms and /privacy pages with comprehensive Nigeria-specific legal content.
 - Landing page now has scroll-reveal animations, an animated stats counter, hover-lift cards, parallax backgrounds, scroll progress bar, and a back-to-top button — all gated behind prefers-reduced-motion.
 - Files changed: 10 modified, 5 new (animations.tsx, legal-page.tsx, upload-client.ts, terms/page.tsx, privacy/page.tsx). Build verified — all 54 routes compile and serve 200s.
+
+---
+Task ID: 15
+Agent: main (Super Z)
+Task: Fix production 500 on PUT /api/admin/settings + 413 FUNCTION_PAYLOAD_TOO_LARGE on video uploads
+
+Work Log:
+- Reproduced both issues end-to-end against real Neon PostgreSQL + Vercel Blob (token: p2kOedcjv9dq8rvk...).
+- Root cause #1 (settings 500): URL fields in settingsUpdateSchema were capped at 500-600 chars.
+  Vercel Blob URLs with long filenames + random suffixes can approach/exceed this. Increased all
+  URL field limits to MAX_URL_LENGTH = 2048 (the de-facto browser URL length limit).
+- Root cause #2 (video 413 FUNCTION_PAYLOAD_TOO_LARGE): Three admin pages still used the OLD
+  multipart-only upload path (/api/admin/media/upload) instead of the new uploadFile helper:
+    * src/app/admin/(panel)/categories/page.tsx — category image upload
+    * src/app/admin/(panel)/media/page.tsx — manual uploader
+    * src/components/admin/vehicle-form.tsx — initial vehicle creation upload
+  All three now use uploadFile() which routes through /api/admin/media/upload-client and uses
+  Vercel Blob's DIRECT upload (bypasses the 4.5MB Vercel Function body limit).
+- Added a new "register" action to /api/admin/media/upload-client:
+  POST { action: "register", url, pathname, contentType, fileSize, vehicleId?, categoryId? }
+  Creates the DB Media record AFTER the direct-to-Blob upload completes. This is more reliable
+  than relying on Vercel Blob's onUploadCompleted webhook, which requires VERCEL_BLOB_CALLBACK_URL
+  to be set and publicly reachable.
+- Updated uploadFile() helper to call the register action automatically after a successful
+  Blob upload — so the DB record is always created even without the webhook callback.
+- Added callbackUrl to onBeforeGenerateToken return value (uses APP_URL) so the webhook
+  fires when VERCEL_BLOB_CALLBACK_URL is configured.
+- Added duplicate-URL guard: both onUploadCompleted and the register action check for an
+  existing Media record with the same URL before inserting, preventing duplicates if both
+  paths fire.
+- Updated src/lib/db.ts to use log: ['error'] in production (was ['query']) and added a
+  beforeExit disconnect hook for Vercel serverless.
+- Updated next.config.ts with experimental.serverActions.bodySizeLimit = "50mb" for
+  admin form submissions that include file inputs.
+- Verified end-to-end against Neon + Vercel Blob:
+  * PUT /api/admin/settings with full payload (Save All) → 200 ✓
+  * PUT /api/admin/settings with long Blob URL (>600 chars) → 200 ✓ (was 422)
+  * PUT /api/admin/settings with heroImage=null (Remove) → 200 ✓
+  * GET /api/admin/media/upload-client → blobEnabled=true ✓
+  * Vercel Blob token generation → 200, type=blob.generate-client-token ✓
+  * 20MB video upload (VIDEO-2026-09-16-10-24-55.mp4) to Vercel Blob via put() → 200 ✓
+  * Register action creates DB record → 200, id=cmua46s490003pyvij8vm522k ✓
+  * Video appears in vehicle's media list → 5 media items, type=VIDEO ✓
+  * Video publicly accessible → HEAD 200, 20854193 bytes ✓
+  * Duplicate register → returns existing record (idempotent) ✓
+  * URL import of 20MB video from Blob URL → 201, type=VIDEO, 20854193 bytes ✓
+
+Stage Summary:
+- All 7 settings PUT scenarios pass (including the previously-failing long URL case).
+- All 7 video upload scenarios pass end-to-end against real Vercel Blob storage.
+- The 413 FUNCTION_PAYLOAD_TOO_LARGE error is resolved — videos now upload directly to
+  Vercel Blob, bypassing the Vercel Function body size limit entirely.
+- DB records are reliably created via the new register action, even without
+  VERCEL_BLOB_CALLBACK_URL configured.
+- Files changed: next.config.ts, src/lib/db.ts, src/lib/validation.ts, src/lib/upload-client.ts,
+  src/app/api/admin/media/upload-client/route.ts, src/components/admin/vehicle-form.tsx,
+  src/app/admin/(panel)/media/page.tsx, src/app/admin/(panel)/categories/page.tsx
