@@ -811,8 +811,30 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [mediaUrl, setMediaUrl] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+
+  async function handleImportUrl() {
+    if (!target || !mediaUrl.trim()) {
+      toast.error("Choose a target and enter a media URL.");
+      return;
+    }
+    const [kind, id] = target.split(":");
+    setUploading(true);
+    try {
+      const res = await api.post<{ url: string }>("/api/admin/media/import-url", { url: mediaUrl.trim(), ...(kind === "vehicle" ? { vehicleId: id } : { categoryId: id }) });
+      if (!res.ok) throw new Error(res.error ?? "URL import failed.");
+      toast.success("Media imported successfully.");
+      setMediaUrl("");
+      onDone();
+      onFinished();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "URL import failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleUpload() {
     if (!target || files.length === 0) {
@@ -868,6 +890,15 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+        <Label htmlFor="media-url">Or import from URL</Label>
+        <div className="flex gap-2">
+          <Input id="media-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://example.com/image.jpg or video.mp4" type="url" />
+          <Button type="button" variant="outline" onClick={handleImportUrl} disabled={uploading || !target || !mediaUrl.trim()}>Import</Button>
+        </div>
+        <p className="text-xs text-zinc-500">Use a direct public image or video URL when selecting a local file fails.</p>
       </div>
 
       <div className="space-y-1.5">

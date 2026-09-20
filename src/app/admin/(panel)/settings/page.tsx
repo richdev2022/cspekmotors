@@ -67,6 +67,7 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
   const [uploadingLightLogo, setUploadingLightLogo] = useState(false);
   const [uploadingDarkLogo, setUploadingDarkLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [heroUrl, setHeroUrl] = useState("");
 
   // Initialized once from loaded data — no sync effect needed
   const [form, setForm] = useState<Record<string, string>>(() => ({
@@ -131,6 +132,25 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
       else if (purpose === "logoLight") setUploadingLightLogo(false);
       else if (purpose === "hero") setUploadingHero(false);
       else setUploadingDarkLogo(false);
+    }
+  }
+
+  async function importHeroUrl() {
+    if (!heroUrl.trim()) return;
+    setUploadingHero(true);
+    try {
+      const res = await api.post<{ url: string }>("/api/admin/media/import-url", { url: heroUrl.trim(), unlinked: true, purpose: "hero" });
+      if (!res.ok || !res.data?.url) throw new Error(res.error ?? "Could not import hero image.");
+      const put = await api.put("/api/admin/settings", { heroImage: res.data.url });
+      if (!put.ok) throw new Error(put.error ?? "Could not save hero image.");
+      setForm((f) => ({ ...f, heroImage: res.data!.url }));
+      setHeroUrl("");
+      qc.invalidateQueries({ queryKey: ["admin-settings"] });
+      toast.success("Hero image imported and saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not import hero image.");
+    } finally {
+      setUploadingHero(false);
     }
   }
 
@@ -234,8 +254,12 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
                     {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
                     <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { uploadImage(e.target.files?.[0], "hero"); e.currentTarget.value = ""; }} />
                   </label>
-                  {form.heroImage && <Button type="button" variant="outline" size="sm" className="rounded-full text-xs text-red-600 hover:bg-red-50" onClick={clearHeroImage}>Remove</Button>}
-                </div>
+  {form.heroImage && <Button type="button" variant="outline" size="sm" className="rounded-full text-xs text-red-600 hover:bg-red-50" onClick={clearHeroImage}>Remove</Button>}
+  </div>
+  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+    <Input value={heroUrl} onChange={(e) => setHeroUrl(e.target.value)} placeholder="Or paste an image URL" type="url" aria-label="Hero image URL" />
+    <Button type="button" variant="outline" onClick={importHeroUrl} disabled={uploadingHero || !heroUrl.trim()}>Use URL</Button>
+  </div>
               </div>
             </CardContent>
           </Card>
