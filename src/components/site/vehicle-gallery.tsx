@@ -15,10 +15,13 @@ export interface GalleryMedia {
 export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "images" | "videos">("all");
   const touchStartX = useRef<number | null>(null);
 
   const images = media.filter((m) => m.type === "IMAGE");
   const videos = media.filter((m) => m.type === "VIDEO");
+  const showImages = filter !== "videos";
+  const showVideos = filter !== "images";
   const current = images[activeIndex];
 
   const next = useCallback(() => setActiveIndex((i) => (i + 1) % Math.max(1, images.length)), [images.length]);
@@ -51,8 +54,27 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
 
   return (
     <div className="space-y-3">
-      {/* Main image */}
-      <div
+      {images.length > 0 && videos.length > 0 && (
+        <div className="flex w-full gap-2 overflow-x-auto rounded-xl bg-zinc-100 p-1" role="tablist" aria-label="Post media filter">
+          {(["all", "images", "videos"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={filter === value}
+              onClick={() => setFilter(value)}
+              className={cn(
+                "min-w-20 flex-1 rounded-lg px-3 py-2 text-xs font-semibold capitalize transition-colors sm:min-w-24",
+                filter === value ? "bg-zinc-950 text-white shadow-sm" : "text-zinc-600 hover:bg-white hover:text-zinc-950",
+              )}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showImages && images.length > 0 && <div
         className="relative aspect-[16/10] w-full cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-100"
         onClick={() => current && setLightboxOpen(true)}
         onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
@@ -70,11 +92,10 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
       >
         {current ? (
           <>
-            { }
             <img
               src={current.url}
               alt={current.caption || `${title} — photo ${activeIndex + 1}`}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-2 sm:p-4"
             />
             {images.length > 1 && (
               <>
@@ -99,10 +120,10 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
             )}
           </>
         ) : null}
-      </div>
+      </div>}
 
       {/* Thumbnails */}
-      {images.length > 1 && (
+      {showImages && images.length > 1 && (
         <div className="styled-scrollbar flex gap-2.5 overflow-x-auto pb-1" role="tablist" aria-label="Image thumbnails">
           {images.map((m, i) => (
             <button
@@ -112,7 +133,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
               aria-label={`View photo ${i + 1} of ${title}`}
               onClick={() => setActiveIndex(i)}
               className={cn(
-                "relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border-2 transition-all",
+                "relative h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-all sm:h-20 sm:w-28",
                 i === activeIndex ? "border-amber-500 shadow-md" : "border-transparent opacity-70 hover:opacity-100"
               )}
             >
@@ -124,7 +145,7 @@ export function VehicleGallery({ media, title }: { media: GalleryMedia[]; title:
       )}
 
       {/* Videos (lazy — only load when played) */}
-      {videos.length > 0 && (
+      {showVideos && videos.length > 0 && (
         <div className="space-y-3">
           {videos.map((v) => (
             <LazyVideo key={v.id} src={v.url} caption={v.caption} title={title} />

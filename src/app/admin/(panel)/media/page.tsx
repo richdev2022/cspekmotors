@@ -332,14 +332,7 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
         </DialogHeader>
         <Tabs value={mode} onValueChange={(v) => setMode(v as UploadMode)}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger
-              value="wizard"
-              className="gap-1.5"
-              onClick={(e) => {
-                e.preventDefault();
-                alert("AI Smart Wizard detection is coming soon.");
-              }}
-            >
+            <TabsTrigger value="wizard" className="gap-1.5">
               <Wand2 className="h-4 w-4" /> Smart Wizard
             </TabsTrigger>
             <TabsTrigger value="manual" className="gap-1.5"><Settings2 className="h-4 w-4" /> Manual</TabsTrigger>
@@ -503,15 +496,24 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
       if (kind === "vehicle") fd.set("vehicleId", id);
       else fd.set("categoryId", id);
       group.forEach((wf) => fd.append("files", wf.file));
-      const res = await api.upload("/api/admin/media/upload", fd, (pct) => {
+      const res = await api.upload<{
+        saved: { filename: string }[];
+        failed: { filename: string; error: string }[];
+        count: number;
+      }>("/api/admin/media/upload", fd, (pct) => {
         setUploadProgress(Math.round(((i + pct / 100) / groups.length) * 100));
       });
-      if (res.ok) {
-        ok += group.length;
-        group.forEach((wf) => patchFile(wf.id, { status: "done" }));
-      } else {
+      if (!res.ok || !res.data) {
         failed += group.length;
         group.forEach((wf) => patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." }));
+      } else {
+        const failedByName = new Map(res.data.failed.map((item) => [item.filename, item.error]));
+        group.forEach((wf) => {
+          const error = failedByName.get(wf.file.name);
+          patchFile(wf.id, error ? { status: "error", error } : { status: "done" });
+          if (error) failed += 1;
+        });
+        ok += res.data.count;
       }
       setUploadProgress(Math.round(((i + 1) / groups.length) * 100));
     }
@@ -799,14 +801,23 @@ function ManualUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
 
     setUploading(true);
     setProgress(0);
-    const res = await api.upload("/api/admin/media/upload", fd, setProgress);
+    const res = await api.upload<{
+      saved: { filename: string }[];
+      failed: { filename: string; error: string }[];
+      count: number;
+    }>("/api/admin/media/upload", fd, setProgress);
     setUploading(false);
 
-    if (!res.ok) {
+    if (!res.ok || !res.data) {
       toast.error(res.error ?? "Upload failed.");
       return;
     }
-    toast.success(`${files.length} file(s) uploaded successfully.`);
+    if (res.data.failed.length > 0) {
+      toast.warning(`${res.data.count} uploaded, ${res.data.failed.length} failed. Review the upload errors and retry.`);
+      onDone();
+      return;
+    }
+    toast.success(`${res.data.count} file(s) uploaded successfully.`);
     setFiles([]);
     onDone();
     onFinished();
