@@ -3,8 +3,8 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "DATABASE_URL=file:./db/custom.db next dev -p 3000 2>&1 | tee dev.log",
-    "build": "prisma generate && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && if [ -d db ]; then cp -r db .next/standalone/; fi && if [ -d uploads ]; then cp -r uploads .next/standalone/; fi",
+    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "build": "prisma generate && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && if [ -d uploads ]; then cp -r uploads .next/standalone/; fi",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "test:media": "node --experimental-strip-types --test scripts/media.test.mjs",
