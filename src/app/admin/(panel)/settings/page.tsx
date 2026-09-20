@@ -112,11 +112,12 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
       fd.set("files", file);
       fd.set("unlinked", "true");
       const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
-      if (!res.ok || !res.data || res.data.length === 0) {
+      const uploaded = Array.isArray(res.data) ? res.data[0] : undefined;
+      if (!res.ok || !uploaded?.url) {
         toast.error(res.error ?? "Upload failed.");
         return;
       }
-      const url = res.data[0].url;
+      const url = uploaded.url;
       const field = purpose === "share" ? "socialSharingImage" : purpose === "hero" ? "heroImage" : purpose;
       setForm((f) => ({ ...f, [field]: url }));
       const put = await api.put("/api/admin/settings", { [field]: url });
