@@ -6,6 +6,7 @@ import { queryVehicles, categoryImageOf, categoryMediaOrderBy } from "@/lib/vehi
 import { publicMediaUrl } from "@/lib/media";
 import { VehicleCard } from "@/components/site/vehicle-card";
 import { EmptyState } from "@/components/site/empty-state";
+import { CategoryGallery } from "@/components/site/category-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** Gallery strip for media uploaded at the category level (wizard/manual uploads). */
-function CategoryGallery({ name, video, media }: { name: string; video: string | null; media: { id: string; url: string; type: string; caption: string | null }[] }) {
+function LegacyCategoryGallery({ name, video, media }: { name: string; video: string | null; media: { id: string; url: string; type: string; caption: string | null }[] }) {
   const galleryMedia = video && !media.some((item) => item.url === video)
     ? [{ id: "category-video", url: video, type: "VIDEO", caption: "Trucks in action" }, ...media]
     : media;
