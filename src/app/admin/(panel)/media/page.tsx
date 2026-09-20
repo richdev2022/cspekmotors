@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
-import { upload as uploadBlob } from "@vercel/blob/client";
+import { uploadFile } from "@/lib/upload-client";
 import { formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
@@ -494,54 +494,23 @@ function WizardUploader({ open, onDone, onFinished }: { open: boolean; onDone: (
       group.forEach((wf) => patchFile(wf.id, { status: "uploading", error: undefined }));
       const [kind, id] = target.split(":");
       const targetPayload = kind === "vehicle" ? { vehicleId: id } : { categoryId: id };
-      const videoFiles = group.filter((wf) => wf.isVideo);
-      const regularFiles = group.filter((wf) => !wf.isVideo);
 
-      for (const wf of videoFiles) {
+      for (const wf of group) {
         try {
-          await uploadBlob(`videos/${crypto.randomUUID()}-${wf.file.name}`, wf.file, {
-            access: "public",
-            handleUploadUrl: "/api/admin/media/upload-client",
-            clientPayload: JSON.stringify({ ...targetPayload, fileSize: wf.file.size, fileType: wf.file.type }),
-            onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(((i + percentage / 100) / groups.length) * 100)),
+          await uploadFile(wf.file, {
+            ...targetPayload,
+            onProgress: () => {
+              // Per-file progress is reflected via the overall progress below
+            },
           });
           patchFile(wf.id, { status: "done", error: undefined });
           ok += 1;
         } catch (error) {
           failed += 1;
-          patchFile(wf.id, { status: "error", error: error instanceof Error ? error.message : "Video upload failed." });
+          patchFile(wf.id, { status: "error", error: error instanceof Error ? error.message : "Upload failed." });
         }
-      }
-
-      if (regularFiles.length === 0) {
         setUploadProgress(Math.round(((i + 1) / groups.length) * 100));
-        continue;
       }
-
-      const fd = new FormData();
-      if (kind === "vehicle") fd.set("vehicleId", id);
-      else fd.set("categoryId", id);
-      regularFiles.forEach((wf) => fd.append("files", wf.file));
-      const res = await api.upload<{
-        saved: { filename: string }[];
-        failed: { filename: string; error: string }[];
-        count: number;
-      }>("/api/admin/media/upload", fd, (pct) => {
-        setUploadProgress(Math.round(((i + pct / 100) / groups.length) * 100));
-      });
-      if (!res.ok || !res.data) {
-        failed += regularFiles.length;
-        regularFiles.forEach((wf) => patchFile(wf.id, { status: "error", error: res.error ?? "Upload failed." }));
-      } else {
-        const failedByName = new Map(res.data.failed.map((item) => [item.filename, item.error]));
-        group.forEach((wf) => {
-          const error = failedByName.get(wf.file.name);
-          patchFile(wf.id, error ? { status: "error", error } : { status: "done" });
-          if (error) failed += 1;
-        });
-        ok += res.data.count;
-      }
-      setUploadProgress(Math.round(((i + 1) / groups.length) * 100));
     }
     setUploading(false);
     onDone();

@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatFileSize } from "@/lib/format";
-import { upload as uploadToBlob } from "@vercel/blob/client";
+import { uploadFile } from "@/lib/upload-client";
 import { mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
 
 // ------------------------------------------------------------
@@ -523,48 +523,44 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
 
     setUploading(true);
     setProgress(0);
-    const directVideos: File[] = [];
-    const fallbackFiles: File[] = [];
-    const directUploadErrors: string[] = [];
+    const uploadedResults: { file: File; ok: boolean; error?: string }[] = [];
 
-    for (const file of list) {
-      if (mediaKindFromFile(file) !== "video") {
-        fallbackFiles.push(file);
-        continue;
-      }
+    // Upload each file individually using the unified helper — works in both
+    // Vercel Blob and local storage modes, with progress per file.
+    for (let i = 0; i < list.length; i++) {
+      const file = list[i];
       try {
-        await uploadToBlob(`vehicles/${file.name}`, file, {
-          access: "public",
-          multipart: true,
-          handleUploadUrl: "/api/admin/media/upload-client",
-          clientPayload: JSON.stringify({ vehicleId, fileSize: file.size, fileType: file.type }),
-          onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+        await uploadFile(file, {
+          vehicleId,
+          onProgress: (pct) => {
+            const overall = Math.round(((i + pct / 100) / list.length) * 100);
+            setProgress(overall);
+          },
         });
-        directVideos.push(file);
+        uploadedResults.push({ file, ok: true });
       } catch (error) {
-        fallbackFiles.push(file);
-        directUploadErrors.push(`${file.name}: ${error instanceof Error ? error.message : "direct upload unavailable"}`);
+        uploadedResults.push({
+          file,
+          ok: false,
+          error: error instanceof Error ? error.message : "Upload failed.",
+        });
       }
     }
 
-    let uploadedCount = directVideos.length;
-    if (fallbackFiles.length > 0) {
-      const fd = new FormData();
-      fd.set("vehicleId", vehicleId);
-      fallbackFiles.forEach((f) => fd.append("files", f));
-      const res = await api.upload<{ saved: MediaItem[]; failed: { filename: string; error: string }[]; count: number }>("/api/admin/media/upload", fd, setProgress);
-      if (!res.ok || !res.data) {
-        setUploading(false);
-        const directError = directUploadErrors.length > 0 ? ` Direct upload: ${directUploadErrors.join("; ")}` : "";
-        toast.error(`${res.error ?? "Upload failed."}${directError}`);
-        return;
-      }
-      uploadedCount += res.data.count;
-      if (res.data.failed.length > 0) toast.error(`${res.data.failed.length} file(s) could not be uploaded.`);
-    }
+    const okCount = uploadedResults.filter((r) => r.ok).length;
+    const failed = uploadedResults.filter((r) => !r.ok);
 
     setUploading(false);
-    toast.success(`${uploadedCount} file(s) uploaded.`);
+
+    if (okCount > 0 && failed.length === 0) {
+      toast.success(`${okCount} file(s) uploaded.`);
+    } else if (okCount > 0 && failed.length > 0) {
+      toast.warning(`${okCount} uploaded, ${failed.length} failed — review the errors below.`);
+    } else if (failed.length > 0) {
+      const first = failed[0];
+      toast.error(`"${first.file.name}": ${first.error ?? "Upload failed."}`);
+    }
+
     qc.invalidateQueries({ queryKey: ["vehicle-media", vehicleId] });
     qc.invalidateQueries({ queryKey: ["admin-media"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
