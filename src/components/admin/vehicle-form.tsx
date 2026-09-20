@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatFileSize } from "@/lib/format";
+import { upload as uploadToBlob } from "@vercel/blob/client";
 import { mediaKindFromFile, mediaMimeType, validateUpload } from "@/lib/media";
 
 // ------------------------------------------------------------
@@ -515,23 +516,47 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
       return;
     }
 
-    const fd = new FormData();
-    fd.set("vehicleId", vehicleId);
-    list.forEach((f) => fd.append("files", f));
-
     setUploading(true);
     setProgress(0);
-    const res = await api.upload<{ saved: MediaItem[]; failed: { filename: string; error: string }[]; count: number }>("/api/admin/media/upload", fd, setProgress);
-    setUploading(false);
+    const directVideos: File[] = [];
+    const fallbackFiles: File[] = [];
 
-    if (!res.ok || !res.data) {
-      toast.error(res.error ?? "Upload failed.");
-      return;
+    for (const file of list) {
+      if (mediaKindFromFile(file) !== "video") {
+        fallbackFiles.push(file);
+        continue;
+      }
+      try {
+        await uploadToBlob(`vehicles/${file.name}`, file, {
+          access: "public",
+          multipart: true,
+          handleUploadUrl: "/api/admin/media/upload-client",
+          clientPayload: JSON.stringify({ vehicleId, fileSize: file.size, fileType: file.type }),
+          onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+        });
+        directVideos.push(file);
+      } catch {
+        fallbackFiles.push(file);
+      }
     }
-    toast.success(`${res.data.count} file(s) uploaded.`);
-    if (res.data.failed.length > 0) {
-      toast.error(`${res.data.failed.length} file(s) could not be uploaded.`);
+
+    let uploadedCount = directVideos.length;
+    if (fallbackFiles.length > 0) {
+      const fd = new FormData();
+      fd.set("vehicleId", vehicleId);
+      fallbackFiles.forEach((f) => fd.append("files", f));
+      const res = await api.upload<{ saved: MediaItem[]; failed: { filename: string; error: string }[]; count: number }>("/api/admin/media/upload", fd, setProgress);
+      if (!res.ok || !res.data) {
+        setUploading(false);
+        toast.error(res.error ?? "Upload failed.");
+        return;
+      }
+      uploadedCount += res.data.count;
+      if (res.data.failed.length > 0) toast.error(`${res.data.failed.length} file(s) could not be uploaded.`);
     }
+
+    setUploading(false);
+    toast.success(`${uploadedCount} file(s) uploaded.`);
     qc.invalidateQueries({ queryKey: ["vehicle-media", vehicleId] });
     qc.invalidateQueries({ queryKey: ["admin-media"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -559,8 +584,9 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
       if (!res.ok) throw new Error(res.error);
       return res.data;
     },
-    onSuccess: () => {
-      toast.success("Media deleted.");
+    onSuccess: (_data, id) => {
+      if (media) setLocal(media.filter((item) => item.id !== id));
+      toast.success("Media removed.");
       if (vehicleId) {
         qc.invalidateQueries({ queryKey: ["vehicle-media", vehicleId] });
         qc.invalidateQueries({ queryKey: ["admin-vehicles"] });
@@ -570,6 +596,10 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function removeMedia(m: MediaItem) {
+    if (window.confirm(`Remove “${m.filename}” from this vehicle?`)) remove.mutate(m.id);
+  }
 
   async function makePrimary(m: MediaItem) {
     if (vehicleId) {
@@ -602,8 +632,8 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
       <CardHeader>
         <CardTitle className="font-display text-base">Photos & Videos</CardTitle>
         <CardDescription>
-          Upload multiple images (JPG, PNG, WEBP — max 8MB) and videos (MP4, WEBM, MOV — max 120MB).
-          The primary image is used as the cover everywhere on the website. Up to 100 files can be uploaded at once. Images: max 20MB; videos: max 200MB.
+          Upload multiple images (JPG, PNG, WEBP — max 20MB) and videos (MP4, WEBM, MOV — max 200MB).
+          The primary image is used as the cover everywhere on the website. Up to 100 files can be uploaded at once.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -678,12 +708,13 @@ export function MediaManager({ vehicleId, standalone = false }: { vehicleId?: st
                   )}
                   <button
                     type="button"
-                    onClick={() => remove.mutate(m.id)}
+                    onClick={() => removeMedia(m)}
                     disabled={remove.isPending}
-                    className="absolute right-2 top-2 rounded-full bg-zinc-950/60 p-1.5 text-white opacity-0 transition hover:bg-red-600 group-hover:opacity-100"
-                    aria-label={`Delete ${m.filename}`}
+                    className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
+                    aria-label={`Remove ${m.filename}`}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
                   </button>
                 </div>
                 <div className="space-y-2 p-3">

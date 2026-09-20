@@ -33,10 +33,8 @@ export function Hero({
             {settings.companyName}
           </p>
 
-          <h1 className="hero-rise hero-rise-delay-1 mt-6 font-display text-4xl font-bold leading-[1.08] text-white sm:text-6xl lg:text-7xl text-balance">
-            Quality Vehicles.
-            <br />
-            <span className="text-amber-400">Trusted Deals.</span>
+          <h1 className="hero-rise hero-rise-delay-1 mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.08] text-white sm:text-6xl lg:text-7xl text-balance">
+            {settings.tagline}
           </h1>
 
           <p className="hero-rise hero-rise-delay-2 mt-6 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">

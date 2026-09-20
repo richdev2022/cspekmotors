@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
           filename: file.name,
           mimeType,
           folder: vehicleId ? "vehicles" : categoryId ? "categories" : "site",
+          multipart: isVideo,
         });
 
         if (unlinked) {
@@ -108,7 +109,8 @@ export async function POST(req: NextRequest) {
       });
         saved.push(media);
       } catch (err) {
-        failed.push({ filename: file.name, error: err instanceof Error && err.message ? err.message : "Storage failed for this file." });
+        const message = err instanceof Error && err.message ? err.message : "Storage failed for this file.";
+        failed.push({ filename: file.name, error: message });
       }
     }
 

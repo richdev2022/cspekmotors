@@ -14,6 +14,7 @@ export interface StorageUpload {
   filename: string;
   mimeType: string;
   folder?: string; // e.g. "vehicles" | "categories" | "enquiries" | "site"
+  multipart?: boolean;
 }
 
 export interface StorageResult {
@@ -142,6 +143,7 @@ const blobProvider: StorageProvider = {
       access: "public",
       contentType: mimeType,
       addRandomSuffix: false,
+      multipart: input.multipart,
     });
 
     return {

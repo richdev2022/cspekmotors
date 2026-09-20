@@ -107,31 +107,45 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
     else if (purpose === "hero") setUploadingHero(true);
     else setUploadingDarkLogo(true);
 
-    const fd = new FormData();
-    fd.set("files", file);
-    fd.set("unlinked", "true"); // site asset — no vehicle/category attachment
-    const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
-    if (purpose === "share") setUploadingShare(false);
-    else if (purpose === "logoLight") setUploadingLightLogo(false);
-    else if (purpose === "hero") setUploadingHero(false);
-    else setUploadingDarkLogo(false);
+    try {
+      const fd = new FormData();
+      fd.set("files", file);
+      fd.set("unlinked", "true");
+      const res = await api.upload<{ url: string }[]>("/api/admin/media/upload", fd);
+      if (!res.ok || !res.data || res.data.length === 0) {
+        toast.error(res.error ?? "Upload failed.");
+        return;
+      }
+      const url = res.data[0].url;
+      const field = purpose === "share" ? "socialSharingImage" : purpose;
+      setForm((f) => ({ ...f, [field]: url }));
+      const put = await api.put("/api/admin/settings", { [field]: url });
+      if (put.ok) {
+        toast.success(
+          purpose === "share" ? "Social sharing image updated." : purpose === "hero" ? "Hero image updated." : "Logo updated."
+        );
+        qc.invalidateQueries({ queryKey: ["admin-settings"] });
+      } else {
+        toast.error(put.error ?? "Could not attach the image.");
+      }
+    } finally {
+      if (purpose === "share") setUploadingShare(false);
+      else if (purpose === "logoLight") setUploadingLightLogo(false);
+      else if (purpose === "hero") setUploadingHero(false);
+      else setUploadingDarkLogo(false);
+    }
+  }
 
-    if (!res.ok || !res.data || res.data.length === 0) {
-      toast.error(res.error ?? "Upload failed.");
+  async function clearHeroImage() {
+    if (!form.heroImage || !window.confirm("Remove the hero image from the homepage?")) return;
+    const res = await api.put("/api/admin/settings", { heroImage: null });
+    if (!res.ok) {
+      toast.error(res.error ?? "Could not remove the hero image.");
       return;
     }
-    const url = res.data[0].url;
-    const field = purpose === "share" ? "socialSharingImage" : purpose;
-    setForm((f) => ({ ...f, [field]: url }));
-    const put = await api.put("/api/admin/settings", { [field]: url });
-    if (put.ok) {
-      toast.success(
-        purpose === "share" ? "Social sharing image updated." : purpose === "hero" ? "Hero image updated." : "Logo updated."
-      );
-      qc.invalidateQueries({ queryKey: ["admin-settings"] });
-    } else {
-      toast.error(put.error ?? "Could not attach the image.");
-    }
+    setForm((f) => ({ ...f, heroImage: "" }));
+    qc.invalidateQueries({ queryKey: ["admin-settings"] });
+    toast.success("Hero image removed.");
   }
 
   return (
@@ -281,11 +295,14 @@ function SettingsForm({ data }: { data: SettingsData & { businessHoursRows: Hour
                   ) : (
                     <span className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-center text-[10px] text-zinc-400">No hero image set</span>
                   )}
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:border-amber-400">
-                    {uploadingHero ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                    {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
-                    <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], "hero")} />
-                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:border-amber-400">
+                      {uploadingHero ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                      {uploadingHero ? "Uploading…" : form.heroImage ? "Replace Hero Image" : "Upload Hero Image"}
+                      <input ref={heroRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { uploadImage(e.target.files?.[0], "hero"); e.currentTarget.value = ""; }} />
+                    </label>
+                    {form.heroImage && <Button type="button" variant="outline" size="sm" className="rounded-full text-xs text-red-600 hover:bg-red-50" onClick={clearHeroImage}>Remove</Button>}
+                  </div>
                 </div>
               </Field>
             </CardContent>
