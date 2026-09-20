@@ -24,6 +24,7 @@ function loadManifest(): Manifest {
 }
 
 const manifest = loadManifest();
+const TRUCK_VIDEO_FILE = "whatsapp-video-2026-09-16-at-11-55-14-pm-mu6ywk2htgr2t6.mp4";
 
 function img(key: string, index: number): string | null {
   const arr = manifest[key];
@@ -281,6 +282,32 @@ async function seedCategories() {
   console.log(`✓ ${CATEGORIES.length} categories seeded`);
 }
 
+async function seedCategoryVideos() {
+  const trucks = await db.category.findUnique({ where: { slug: "trucks" } });
+  if (!trucks) return;
+
+  const url = `/api/files/vehicles/${TRUCK_VIDEO_FILE}`;
+  const existing = await db.media.findFirst({ where: { categoryId: trucks.id, url } });
+  if (!existing && existsSync(path.join(process.cwd(), "uploads", "vehicles", TRUCK_VIDEO_FILE))) {
+    await db.media.create({
+      data: {
+        categoryId: trucks.id,
+        type: "VIDEO",
+        url,
+        filename: TRUCK_VIDEO_FILE,
+        mimeType: "video/mp4",
+        fileSize: null,
+        caption: "Trucks in action",
+        sortOrder: 0,
+        isPrimary: false,
+      },
+    });
+    console.log("✓ Truck category video seeded");
+  } else if (existing) {
+    console.log("✓ Truck category video already present");
+  }
+}
+
 async function seedVehicles() {
   const categories = await db.category.findMany();
   const catBySlug = new Map(categories.map((c) => [c.slug, c]));
@@ -416,6 +443,7 @@ async function main() {
   await seedAdmin();
   await seedSettings();
   await seedCategories();
+  await seedCategoryVideos();
   await seedVehicles();
   await seedEnquiries();
   await seedContactMessages();
